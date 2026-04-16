@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import httpx
 from apscheduler.schedulers.background import BackgroundScheduler
 from icalendar import Calendar
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
@@ -147,8 +148,26 @@ def _get_or_create_caldav_calendar_list(
             is_visible=True,
         )
         db.add(cal_list)
-        db.commit()
-        db.refresh(cal_list)
+        try:
+            db.commit()
+            db.refresh(cal_list)
+        except IntegrityError:
+            # Another process/iteration already inserted a matching row; roll back
+            # and re-query to get the existing record.
+            db.rollback()
+            cal_list = (
+                db.query(models.CalendarList)
+                .filter(
+                    models.CalendarList.ical_feed_id == feed.id,
+                    models.CalendarList.caldav_calendar_name == calendar_name,
+                )
+                .first()
+            )
+            if cal_list is None:
+                raise RuntimeError(
+                    f"Failed to get or create CalendarList for feed {feed.id} "
+                    f"calendar '{calendar_name}'"
+                )
     return cal_list
 
 

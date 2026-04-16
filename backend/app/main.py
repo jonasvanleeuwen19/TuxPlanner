@@ -49,6 +49,14 @@ def run_migrations():
         "ALTER TABLE calendar_lists ADD COLUMN IF NOT EXISTS caldav_calendar_name VARCHAR(255)",
         # Update existing Planned Tasks list to be auto
         "UPDATE calendar_lists SET is_auto = TRUE WHERE name = 'Planned Tasks' AND is_auto IS NOT TRUE",
+        # Drop the single-column unique constraint on ical_feed_id so that one CalDAV
+        # feed can have multiple CalendarList rows (one per remote calendar).
+        "ALTER TABLE calendar_lists DROP CONSTRAINT IF EXISTS calendar_lists_ical_feed_id_key",
+        # Replace it with a composite unique index covering (ical_feed_id, caldav_calendar_name)
+        # to still prevent accidental duplicates for the same CalDAV calendar.
+        """CREATE UNIQUE INDEX IF NOT EXISTS uq_calendar_lists_ical_feed_caldav_name
+               ON calendar_lists (ical_feed_id, caldav_calendar_name)
+               WHERE caldav_calendar_name IS NOT NULL""",
     ]
     with engine.begin() as conn:
         for stmt in migrations:
