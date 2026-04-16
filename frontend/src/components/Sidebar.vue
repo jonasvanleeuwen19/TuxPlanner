@@ -10,7 +10,7 @@
         :key="item.to"
         :to="item.to"
         class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline"
-        active-class="bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
+        active-class="bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400"
       >
         <i :class="['mdi text-lg', item.icon]" />
         {{ item.title }}
