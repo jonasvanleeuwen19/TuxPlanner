@@ -54,7 +54,7 @@
           :class="[
             'cal-day',
             !day.isCurrentMonth ? 'opacity-30' : '',
-            day.isToday ? 'cal-day--today' : 'cal-day--normal'
+            day.isToday ? 'cal-day--today' : 'cal-day--normal dark:bg-gray-800 dark:border-gray-700'
           ]"
           @click="onDayClick(day)"
         >
@@ -92,7 +92,7 @@
           v-for="(day, i) in weekDays"
           :key="i"
           :class="[
-            'cal-week-col',
+            'cal-week-col dark:bg-gray-800 dark:border-gray-700',
             day.isToday ? 'cal-week-col--today' : ''
           ]"
         >
@@ -144,7 +144,7 @@
           <div
             v-for="ev in group"
             :key="ev.id"
-            class="cal-list-card"
+            class="cal-list-card dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
             @click="onEventClick(ev)"
           >
             <div class="cal-list-dot" :style="{ backgroundColor: ev.backgroundColor || '#3b82f6' }" />
