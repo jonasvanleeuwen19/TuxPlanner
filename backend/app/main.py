@@ -44,6 +44,11 @@ def run_migrations():
             note TEXT,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )""",
+        # Calendar list enhancements
+        "ALTER TABLE calendar_lists ADD COLUMN IF NOT EXISTS is_auto BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE calendar_lists ADD COLUMN IF NOT EXISTS caldav_calendar_name VARCHAR(255)",
+        # Update existing Planned Tasks list to be auto
+        "UPDATE calendar_lists SET is_auto = TRUE WHERE name = 'Planned Tasks' AND is_auto IS NOT TRUE",
     ]
     with engine.begin() as conn:
         for stmt in migrations:

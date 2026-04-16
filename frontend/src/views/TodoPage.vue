@@ -368,7 +368,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import TodoDialog from '../components/TodoDialog.vue'
@@ -564,38 +564,43 @@ async function fetchSessions(todoId) {
 
 function openAddSession() {
   editingSession.value = null
+  infoModal.value.open = false
   sessionDialog.value = true
 }
 
 function openEditSession(session) {
   editingSession.value = { ...session }
+  infoModal.value.open = false
   sessionDialog.value = true
 }
 
 async function saveSession(sessionData) {
-  if (!infoModal.value.todo) return
+  const todoForSession = infoModal.value.todo
+  if (!todoForSession) return
   try {
     if (editingSession.value) {
       // Edit single session
-      const { data } = await taskSessionsApi.update(infoModal.value.todo.id, editingSession.value.id, sessionData)
+      const { data } = await taskSessionsApi.update(todoForSession.id, editingSession.value.id, sessionData)
       const idx = sessions.value.findIndex((s) => s.id === data.id)
       if (idx !== -1) sessions.value[idx] = data
     } else if (Array.isArray(sessionData)) {
       // Multi-day: create one session per selected day
       for (const s of sessionData) {
-        const { data } = await taskSessionsApi.create(infoModal.value.todo.id, s)
+        const { data } = await taskSessionsApi.create(todoForSession.id, s)
         sessions.value.push(data)
       }
     } else {
-      const { data } = await taskSessionsApi.create(infoModal.value.todo.id, sessionData)
+      const { data } = await taskSessionsApi.create(todoForSession.id, sessionData)
       sessions.value.push(data)
     }
-    await refreshTodo(infoModal.value.todo.id)
+    await refreshTodo(todoForSession.id)
   } catch (err) {
     console.error('Failed to save session', err)
   }
   sessionDialog.value = false
   editingSession.value = null
+  // Reopen the info modal
+  if (todoForSession) infoModal.value.open = true
 }
 
 async function deleteSession(session) {
@@ -650,6 +655,13 @@ function priorityClass(priority) {
   if (priority === 'medium') return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
   return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
 }
+
+// When the session dialog is closed (by cancel), reopen the info modal if there's a todo
+watch(sessionDialog, (isOpen) => {
+  if (!isOpen && infoModal.value.todo) {
+    infoModal.value.open = true
+  }
+})
 
 onMounted(async () => {
   await fetchTodoLists()

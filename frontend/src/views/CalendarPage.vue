@@ -23,6 +23,7 @@
             :calendar-lists="calendarListsForPanel"
             @update="fetchCalendarLists"
             @toggle-virtual="handleToggleVirtual"
+            @edit-virtual="handleEditVirtual"
           />
         </div>
       </div>
@@ -70,7 +71,7 @@ import CalendarListPanel from '../components/CalendarListPanel.vue'
 import { eventsApi, calendarListsApi, todosApi, todoListsApi } from '../api/index.js'
 
 const TODO_LIST_ID = 'todos-virtual'
-const TODO_LIST_COLOR = '#f59e0b'
+const DEFAULT_TODO_COLOR = '#f59e0b'
 
 const events = ref([])
 const calendarLists = ref([])
@@ -82,19 +83,23 @@ const todoListVisible = ref(
   localStorage.getItem('todoListVisible') !== 'false'
 )
 
+const todoListColor = ref(
+  localStorage.getItem('todoListColor') || DEFAULT_TODO_COLOR
+)
+
 // The virtual "TODO's" list entry for the panel
-const todoVirtualList = {
+const todoVirtualList = computed(() => ({
   id: TODO_LIST_ID,
   name: "TODO's",
-  color: TODO_LIST_COLOR,
+  color: todoListColor.value,
   ical_feed_id: null,
   is_virtual: true,
-}
+}))
 
 // For the panel, include the virtual TODO's list
 const calendarListsForPanel = computed(() => [
   ...calendarLists.value,
-  { ...todoVirtualList, is_visible: todoListVisible.value },
+  { ...todoVirtualList.value, is_visible: todoListVisible.value },
 ])
 
 const listMap = computed(() => {
@@ -140,8 +145,8 @@ const todoEvents = computed(() =>
       title: `✓ ${t.title}`,
       start: t.due_date,
       end: t.due_date,
-      allDay: false,
-      backgroundColor: TODO_LIST_COLOR,
+      allDay: true,
+      backgroundColor: todoListColor.value,
       calendar_list_id: TODO_LIST_ID,
       extendedProps: {
         description: t.description,
@@ -203,9 +208,13 @@ const infoModal = ref({ open: false, event: null })
 const eventDialog = ref({ open: false, event: null })
 
 function openAddEvent({ dateStr, allDay }) {
+  // Always open with all_day=false so time & end fields are visible
+  const startStr = allDay
+    ? new Date(dateStr).toISOString().slice(0, 10) + 'T09:00'
+    : new Date(dateStr).toISOString().slice(0, 16)
   eventDialog.value = {
     open: true,
-    event: { title: '', start: dateStr, end: null, all_day: allDay, color: null, description: '', location: '', calendar_list_id: null },
+    event: { title: '', start: startStr, end: null, all_day: false, color: null, description: '', location: '', calendar_list_id: null },
   }
 }
 
@@ -251,6 +260,11 @@ async function deleteEvent(id) {
 function handleToggleVirtual() {
   todoListVisible.value = !todoListVisible.value
   localStorage.setItem('todoListVisible', String(todoListVisible.value))
+}
+
+function handleEditVirtual(newColor) {
+  todoListColor.value = newColor
+  localStorage.setItem('todoListColor', newColor)
 }
 
 async function handleTasksUpdated() {

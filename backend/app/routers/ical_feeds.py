@@ -66,16 +66,16 @@ def delete_feed(feed_id: int, db: Session = Depends(get_db)):
     db_feed = db.query(models.IcalFeed).filter(models.IcalFeed.id == feed_id).first()
     if not db_feed:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
-    calendar_list_id = db_feed.calendar_list_id
     db.query(models.Event).filter(
         models.Event.source == "ical",
         models.Event.ical_uid.like(f"{db_feed.id}:%"),
     ).delete(synchronize_session=False)
     db.delete(db_feed)
     db.flush()
-    # Delete the linked CalendarList after the feed is gone (to avoid FK violation)
-    if calendar_list_id:
-        db.query(models.CalendarList).filter(models.CalendarList.id == calendar_list_id).delete()
+    # Delete all linked CalendarLists for this feed (including CalDAV sub-calendars)
+    db.query(models.CalendarList).filter(models.CalendarList.ical_feed_id == feed_id).delete(
+        synchronize_session=False
+    )
     db.commit()
 
 

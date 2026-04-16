@@ -97,13 +97,15 @@
             <div
               v-for="task in linkedTasks"
               :key="task.id"
-              class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+              @click="openTaskInfo(task)"
             >
               <div class="flex items-center gap-2">
                 <input
                   type="checkbox"
                   :checked="task.completed"
                   class="w-4 h-4 accent-blue-500 cursor-pointer shrink-0"
+                  @click.stop
                   @change="toggleTask(task)"
                 />
                 <div class="flex-1 min-w-0">
@@ -149,6 +151,13 @@
     :linked-event-id="addTaskEventId"
     @save="saveTask"
   />
+
+  <!-- Task Info Modal -->
+  <TaskInfoModal
+    v-model="taskInfoOpen"
+    :todo="selectedTask"
+    @toggle="toggleTask"
+  />
 </template>
 
 <script setup>
@@ -157,6 +166,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { todosApi } from '../api/index.js'
 import TodoDialog from './TodoDialog.vue'
+import TaskInfoModal from './TaskInfoModal.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -203,6 +213,8 @@ const tasksLoading = ref(false)
 const taskDialogOpen = ref(false)
 const editingTask = ref(null)
 const addTaskEventId = ref(null)
+const taskInfoOpen = ref(false)
+const selectedTask = ref(null)
 
 const eventId = computed(() => props.event?.extendedProps?.raw?.id || null)
 
@@ -243,6 +255,11 @@ function openEditTask(task) {
   taskDialogOpen.value = true
 }
 
+function openTaskInfo(task) {
+  selectedTask.value = task
+  taskInfoOpen.value = true
+}
+
 async function saveTask(taskData) {
   try {
     if (editingTask.value) {
@@ -266,6 +283,7 @@ async function toggleTask(task) {
     const { data } = await todosApi.update(task.id, { completed: !task.completed })
     const idx = linkedTasks.value.findIndex((t) => t.id === task.id)
     if (idx !== -1) linkedTasks.value[idx] = data
+    if (selectedTask.value?.id === data.id) selectedTask.value = data
     emit('tasks-updated')
   } catch (err) {
     console.error('Failed to toggle task', err)

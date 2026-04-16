@@ -85,6 +85,37 @@
           />
         </div>
 
+        <!-- Calendar list visibility toggles -->
+        <div v-if="getListsForFeed(feed).length > 0" class="mb-3 space-y-1">
+          <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <i class="mdi mdi-calendar-multiple-check mr-1" />Calendars
+          </p>
+          <div
+            v-for="list in getListsForFeed(feed)"
+            :key="list.id"
+            class="flex items-center gap-2 py-1"
+          >
+            <div class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: list.color }" />
+            <span class="text-xs flex-1 truncate text-gray-700 dark:text-gray-300">
+              {{ list.caldav_calendar_name || list.name }}
+            </span>
+            <button
+              :class="[
+                'relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0',
+                list.is_visible ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+              ]"
+              @click="toggleListVisibility(list)"
+            >
+              <span
+                :class="[
+                  'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
+                  list.is_visible ? 'translate-x-3.5' : 'translate-x-0.5'
+                ]"
+              />
+            </button>
+          </div>
+        </div>
+
         <div class="flex gap-2 items-center">
           <button
             :disabled="syncingId === feed.id"
@@ -321,6 +352,20 @@ function getListColor(feed) {
   if (!feed.calendar_list_id) return '#3b82f6'
   const list = calendarLists.value.find((l) => l.id === feed.calendar_list_id)
   return list ? list.color : '#3b82f6'
+}
+
+function getListsForFeed(feed) {
+  return calendarLists.value.filter((l) => l.ical_feed_id === feed.id)
+}
+
+async function toggleListVisibility(list) {
+  try {
+    await calendarListsApi.update(list.id, { is_visible: !list.is_visible })
+    const idx = calendarLists.value.findIndex((l) => l.id === list.id)
+    if (idx !== -1) calendarLists.value[idx] = { ...calendarLists.value[idx], is_visible: !list.is_visible }
+  } catch (err) {
+    console.error('Failed to toggle visibility', err)
+  }
 }
 
 async function fetchData() {

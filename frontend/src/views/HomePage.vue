@@ -31,7 +31,8 @@
           <div
             v-for="event in todayEvents"
             :key="event.id"
-            class="flex items-start gap-2 p-2 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30"
+            class="flex items-start gap-2 p-2 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
+            @click="openEventInfo(event)"
           >
             <div class="w-1.5 h-full min-h-[1.5rem] rounded-full shrink-0 mt-0.5" :style="{ backgroundColor: event.color || '#3b82f6' }" />
             <div class="flex-1 min-w-0">
@@ -61,7 +62,12 @@
             :key="task.id"
             class="flex items-center gap-2 p-2 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30"
           >
-            <i :class="['mdi text-sm shrink-0', task.completed ? 'mdi-check-circle text-green-500' : 'mdi-circle-outline text-amber-400']" />
+            <input
+              type="checkbox"
+              :checked="task.completed"
+              class="w-4 h-4 accent-blue-500 cursor-pointer shrink-0"
+              @change="toggleTask(task)"
+            />
             <p :class="['text-xs font-medium truncate flex-1', task.completed ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-800 dark:text-gray-200']">{{ task.title }}</p>
             <span v-if="task.priority" :class="['text-xs px-1.5 py-0.5 rounded font-medium shrink-0', priorityClass(task.priority)]">{{ task.priority }}</span>
           </div>
@@ -97,12 +103,23 @@
         </div>
       </div>
     </div>
+
+    <!-- Event Info Modal -->
+    <EventInfoModal
+      v-model="infoModal.open"
+      :event="infoModal.event"
+      :events="allEvents"
+      :todo-lists="[]"
+      @edit="infoModal.open = false"
+      @tasks-updated="fetchData"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { eventsApi, todosApi } from '../api/index.js'
+import EventInfoModal from '../components/EventInfoModal.vue'
 
 const now = ref(new Date())
 let clockInterval = null
@@ -134,6 +151,8 @@ const greeting = computed(() => {
 const loading = ref(false)
 const allEvents = ref([])
 const allTodos = ref([])
+
+const infoModal = ref({ open: false, event: null })
 
 async function fetchData() {
   loading.value = true
@@ -168,6 +187,36 @@ const todayTasks = computed(() => {
   const todayStr = now.value.toISOString().slice(0, 10)
   return allTodos.value.filter((t) => t.due_date && t.due_date.slice(0, 10) === todayStr)
 })
+
+function openEventInfo(rawEvent) {
+  // Transform raw API event into the format EventInfoModal expects
+  const fcEvent = {
+    id: String(rawEvent.id),
+    title: rawEvent.title,
+    start: rawEvent.start,
+    end: rawEvent.end,
+    allDay: rawEvent.all_day,
+    backgroundColor: rawEvent.color || '#3b82f6',
+    extendedProps: {
+      description: rawEvent.description,
+      location: rawEvent.location,
+      source: rawEvent.source,
+      raw: rawEvent,
+      task_count: rawEvent.task_count || 0,
+    },
+  }
+  infoModal.value = { open: true, event: fcEvent }
+}
+
+async function toggleTask(task) {
+  try {
+    const { data } = await todosApi.update(task.id, { completed: !task.completed })
+    const idx = allTodos.value.findIndex((t) => t.id === task.id)
+    if (idx !== -1) allTodos.value[idx] = data
+  } catch (err) {
+    console.error('Failed to toggle task', err)
+  }
+}
 
 function formatEventTime(event) {
   if (event.all_day) return 'All day'

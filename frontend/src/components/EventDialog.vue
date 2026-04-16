@@ -193,7 +193,7 @@ const isEdit = computed(() => !!form.value.id)
 const isIcalEvent = computed(() => form.value.source === 'ical')
 
 const writableCalendarListItems = computed(() =>
-  props.calendarLists.filter((l) => l.name !== "TODO's")
+  props.calendarLists.filter((l) => l.name !== "TODO's" && !l.is_auto)
 )
 
 watch(

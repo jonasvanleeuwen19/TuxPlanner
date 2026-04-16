@@ -25,7 +25,9 @@ class CalendarListUpdate(BaseModel):
 
 class CalendarListResponse(CalendarListBase):
     id: int
+    is_auto: bool = False
     ical_feed_id: Optional[int] = None
+    caldav_calendar_name: Optional[str] = None
     created_at: datetime
 
     class Config:

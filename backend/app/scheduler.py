@@ -38,6 +38,11 @@ def _str_or_none(value):
 
 def _process_vevent(db: Session, feed: models.IcalFeed, component):
     """Process a single VEVENT component and upsert it into the DB."""
+    _process_vevent_with_list(db, feed, component, feed.calendar_list_id)
+
+
+def _process_vevent_with_list(db: Session, feed: models.IcalFeed, component, calendar_list_id):
+    """Process a single VEVENT component and upsert it into the DB."""
     raw_uid = component.get("UID", "")
     uid = f"{feed.id}:{raw_uid}"
     if not raw_uid:
@@ -80,7 +85,7 @@ def _process_vevent(db: Session, feed: models.IcalFeed, component):
         existing.start = start_dt
         existing.end = end_dt
         existing.all_day = all_day
-        existing.calendar_list_id = feed.calendar_list_id
+        existing.calendar_list_id = calendar_list_id
     else:
         db.add(models.Event(
             title=summary,
@@ -91,7 +96,7 @@ def _process_vevent(db: Session, feed: models.IcalFeed, component):
             all_day=all_day,
             source="ical",
             ical_uid=uid,
-            calendar_list_id=feed.calendar_list_id,
+            calendar_list_id=calendar_list_id,
         ))
 
 
@@ -113,6 +118,40 @@ def _sync_ical(db: Session, feed: models.IcalFeed):
         _process_vevent(db, feed, component)
 
 
+def _get_or_create_caldav_calendar_list(
+    db: Session, feed: models.IcalFeed, calendar_name: str
+) -> models.CalendarList:
+    """Return a CalendarList for a specific CalDAV calendar, creating it if needed."""
+    cal_list = (
+        db.query(models.CalendarList)
+        .filter(
+            models.CalendarList.ical_feed_id == feed.id,
+            models.CalendarList.caldav_calendar_name == calendar_name,
+        )
+        .first()
+    )
+    if not cal_list:
+        # Determine color: reuse the feed's primary list color if available
+        primary = (
+            db.query(models.CalendarList)
+            .filter(models.CalendarList.id == feed.calendar_list_id)
+            .first()
+        ) if feed.calendar_list_id else None
+        base_color = primary.color if primary else "#3b82f6"
+
+        cal_list = models.CalendarList(
+            name=f"{feed.name}: {calendar_name}",
+            color=base_color,
+            ical_feed_id=feed.id,
+            caldav_calendar_name=calendar_name,
+            is_visible=True,
+        )
+        db.add(cal_list)
+        db.commit()
+        db.refresh(cal_list)
+    return cal_list
+
+
 def _sync_caldav(db: Session, feed: models.IcalFeed):
     """Sync a CalDAV calendar feed."""
     import caldav
@@ -126,6 +165,13 @@ def _sync_caldav(db: Session, feed: models.IcalFeed):
     calendars = principal.calendars()
 
     for calendar in calendars:
+        try:
+            cal_name = str(calendar.name) if calendar.name else "Calendar"
+        except Exception:
+            cal_name = "Calendar"
+
+        cal_list = _get_or_create_caldav_calendar_list(db, feed, cal_name)
+
         events = calendar.events()
         for event in events:
             try:
@@ -133,7 +179,7 @@ def _sync_caldav(db: Session, feed: models.IcalFeed):
                 for component in cal.walk():
                     if component.name != "VEVENT":
                         continue
-                    _process_vevent(db, feed, component)
+                    _process_vevent_with_list(db, feed, component, cal_list.id)
             except Exception as e:
                 print(f"CalDAV event parse error for feed {feed.id}: {e}")
 
