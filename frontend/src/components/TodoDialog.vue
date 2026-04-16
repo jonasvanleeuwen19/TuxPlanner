@@ -5,7 +5,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
       @click.self="$emit('update:modelValue', false)"
     >
-      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
         <!-- Header -->
         <div class="flex items-center p-5 pb-3">
           <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3 shrink-0">
@@ -23,7 +23,7 @@
         <hr class="border-gray-200 dark:border-gray-700" />
 
         <!-- Body -->
-        <div class="p-5 space-y-4">
+        <div class="p-5 space-y-4 overflow-y-auto flex-1">
           <!-- Title -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Task title *</label>
@@ -51,21 +51,22 @@
           <!-- Link to event -->
           <div v-if="events && events.length">
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Link to event</label>
-            <div class="relative">
-              <i class="mdi mdi-calendar-link absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
-              <select
-                v-model="form.event_id"
-                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                @change="onEventLinkChange"
-              >
-                <option :value="null">No event</option>
-                <option v-for="ev in events" :key="ev.id" :value="ev.id">{{ ev.title }} ({{ formatEventDate(ev) }})</option>
-              </select>
-            </div>
+            <button
+              type="button"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-left transition-colors hover:border-blue-400 dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              @click="eventPickerOpen = true"
+            >
+              <i class="mdi mdi-calendar-link text-gray-400 dark:text-gray-500 text-sm shrink-0" />
+              <span v-if="form.event_id" class="flex-1 text-gray-900 dark:text-gray-100 truncate">
+                {{ linkedEventTitle }}
+              </span>
+              <span v-else class="flex-1 text-gray-400 dark:text-gray-500">No event linked</span>
+              <i class="mdi mdi-chevron-right text-gray-400 dark:text-gray-500 text-sm shrink-0" />
+            </button>
           </div>
 
           <!-- List selector -->
-          <div v-if="todoLists && todoLists.length">
+          <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">List</label>
             <div class="relative">
               <i class="mdi mdi-view-list absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
@@ -73,7 +74,7 @@
                 v-model="form.todo_list_id"
                 class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
-                <option :value="null">No list</option>
+                <option :value="null">Default</option>
                 <option v-for="list in todoLists" :key="list.id" :value="list.id">{{ list.name }}</option>
               </select>
             </div>
@@ -93,25 +94,6 @@
                 <option value="high">High</option>
               </select>
             </div>
-          </div>
-
-          <!-- Category -->
-          <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
-            <div class="relative">
-              <i class="mdi mdi-folder-outline absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
-              <input
-                v-model="form.category"
-                type="text"
-                list="category-suggestions"
-                placeholder="Default"
-                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-              />
-              <datalist id="category-suggestions">
-                <option v-for="cat in existingCategories" :key="cat" :value="cat" />
-              </datalist>
-            </div>
-            <p v-if="categoryError" class="text-xs text-red-500 mt-1">{{ categoryError }}</p>
           </div>
 
           <!-- Due date -->
@@ -151,12 +133,19 @@
         </div>
       </div>
     </div>
+    <EventPickerModal
+      v-model="eventPickerOpen"
+      :events="events"
+      :initial-event-id="form.event_id"
+      @select="onEventSelected"
+    />
   </Teleport>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
 import MarkdownEditor from './MarkdownEditor.vue'
+import EventPickerModal from './EventPickerModal.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -171,14 +160,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const titleError = ref('')
-const categoryError = ref('')
+const eventPickerOpen = ref(false)
 
-const existingCategories = computed(() => {
-  const cats = new Set(['Default'])
-  for (const t of props.existingTodos) {
-    if (t.category) cats.add(t.category)
-  }
-  return [...cats].sort()
+const linkedEventTitle = computed(() => {
+  if (!form.value.event_id) return ''
+  const ev = props.events.find((e) => e.id === form.value.event_id)
+  return ev ? `${ev.title} (${formatEventDate(ev)})` : `Event #${form.value.event_id}`
 })
 
 const defaultForm = () => ({
@@ -187,7 +174,6 @@ const defaultForm = () => ({
   priority: 'medium',
   due_date: '',
   todo_list_id: props.defaultListId ?? null,
-  category: 'Default',
   event_id: props.linkedEventId ?? null,
 })
 
@@ -198,7 +184,6 @@ function formFromTodo(todo) {
     priority: todo.priority || 'medium',
     due_date: todo.due_date ? new Date(todo.due_date).toISOString().slice(0, 16) : '',
     todo_list_id: todo.todo_list_id ?? null,
-    category: todo.category || 'Default',
     event_id: todo.event_id ?? null,
   }
 }
@@ -213,14 +198,6 @@ function applyEventDueDate(eventId) {
     if (dateStr) {
       form.value.due_date = new Date(dateStr).toISOString().slice(0, 16)
     }
-  }
-}
-
-function onEventLinkChange() {
-  if (form.value.event_id) {
-    applyEventDueDate(form.value.event_id)
-  } else {
-    form.value.due_date = ''
   }
 }
 
@@ -242,7 +219,6 @@ watch(
         }
       }
       titleError.value = ''
-      categoryError.value = ''
     }
   }
 )
@@ -266,15 +242,19 @@ watch(
   }
 )
 
+function onEventSelected(eventId) {
+  form.value.event_id = eventId
+  if (eventId) {
+    applyEventDueDate(eventId)
+  } else {
+    form.value.due_date = ''
+  }
+}
+
 function submit() {
   titleError.value = ''
-  categoryError.value = ''
   if (!form.value.title.trim()) {
     titleError.value = 'Title is required'
-    return
-  }
-  if (!form.value.category.trim()) {
-    categoryError.value = 'Category is required'
     return
   }
   emit('save', {
@@ -283,7 +263,6 @@ function submit() {
     priority: form.value.priority,
     due_date: form.value.due_date ? new Date(form.value.due_date).toISOString() : null,
     todo_list_id: form.value.todo_list_id ?? null,
-    category: form.value.category.trim() || 'Default',
     event_id: form.value.event_id ?? null,
   })
 }

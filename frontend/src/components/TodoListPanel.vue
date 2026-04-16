@@ -21,26 +21,72 @@
     >
       <i class="mdi mdi-view-list text-xs mr-2 text-blue-500" />
       <span class="text-xs flex-1 truncate font-medium">All tasks</span>
-      <span class="text-xs text-gray-400 dark:text-gray-500">{{ todoLists.reduce((s, l) => s + (l._count || 0), allCount) }}</span>
+      <span class="text-xs text-gray-400 dark:text-gray-500">{{ allCount }}</span>
+    </div>
+
+    <!-- Divider and column visibility section -->
+    <div class="mt-2 mb-1 px-1">
+      <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Columns</span>
+    </div>
+
+    <!-- Default column toggle -->
+    <div class="flex items-center px-1 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 group">
+      <i class="mdi mdi-inbox-outline text-xs mr-2 text-gray-400 dark:text-gray-500" />
+      <span class="text-xs flex-1 truncate text-gray-600 dark:text-gray-400">Default</span>
+      <button
+        :class="[
+          'relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 cursor-pointer focus:outline-none',
+          !hiddenColumns.has('__default__') ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
+        ]"
+        role="switch"
+        :aria-checked="!hiddenColumns.has('__default__')"
+        @click.stop="$emit('toggle-column', null)"
+      >
+        <span
+          :class="[
+            'pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition duration-200',
+            !hiddenColumns.has('__default__') ? 'translate-x-3' : 'translate-x-0'
+          ]"
+        />
+      </button>
     </div>
 
     <div
       v-for="list in todoLists"
       :key="list.id"
       :class="[
-        'flex items-center px-1 py-1.5 rounded-lg cursor-pointer transition-colors',
+        'flex items-center px-1 py-1.5 rounded-lg transition-colors',
         selectedListId === list.id ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
       ]"
-      @click="$emit('select', list.id)"
     >
-      <div class="w-3 h-3 rounded mr-2 shrink-0" :style="{ backgroundColor: list.color }" />
-      <span class="text-xs flex-1 truncate">{{ list.name }}</span>
+      <div
+        class="w-3 h-3 rounded mr-2 shrink-0 cursor-pointer"
+        :style="{ backgroundColor: list.color }"
+        @click="$emit('select', list.id)"
+      />
+      <span class="text-xs flex-1 truncate cursor-pointer" @click="$emit('select', list.id)">{{ list.name }}</span>
       <div class="flex items-center gap-1 ml-1">
         <button
           class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           @click.stop="openEditDialog(list)"
         >
           <i class="mdi mdi-pencil-outline text-xs text-gray-500" />
+        </button>
+        <button
+          :class="[
+            'relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 cursor-pointer focus:outline-none',
+            !hiddenColumns.has(list.id) ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'
+          ]"
+          role="switch"
+          :aria-checked="!hiddenColumns.has(list.id)"
+          @click.stop="$emit('toggle-column', list.id)"
+        >
+          <span
+            :class="[
+              'pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition duration-200',
+              !hiddenColumns.has(list.id) ? 'translate-x-3' : 'translate-x-0'
+            ]"
+          />
         </button>
       </div>
     </div>
@@ -183,9 +229,10 @@ const props = defineProps({
   todoLists: { type: Array, default: () => [] },
   selectedListId: { type: Number, default: null },
   allCount: { type: Number, default: 0 },
+  hiddenColumns: { type: Set, default: () => new Set() },
 })
 
-const emit = defineEmits(['update', 'select'])
+const emit = defineEmits(['update', 'select', 'toggle-column'])
 
 const colorOptions = [
   '#3b82f6', '#8b5cf6', '#06b6d4', '#10b981',

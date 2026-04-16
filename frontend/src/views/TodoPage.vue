@@ -39,8 +39,10 @@
             :todo-lists="todoLists"
             :selected-list-id="selectedListId"
             :all-count="todos.filter((t) => !t.completed).length"
+            :hidden-columns="hiddenColumns"
             @update="handleListUpdate"
             @select="selectList"
+            @toggle-column="toggleColumn"
           />
         </div>
       </div>
@@ -59,24 +61,26 @@
           <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Create your first task to get started</p>
         </div>
 
-        <!-- Category columns (horizontal scroll) -->
+        <!-- List columns (horizontal scroll) -->
         <div v-else class="flex gap-4 overflow-x-auto pb-2" style="min-height: 200px;">
           <div
-            v-for="category in categoryColumns"
-            :key="category"
+            v-for="col in listColumns"
+            :key="col.id ?? '__default__'"
             class="flex-shrink-0 w-72"
           >
             <!-- Column header -->
             <div class="flex items-center mb-3 px-1">
-              <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ category }}</span>
+              <div v-if="col.id" class="w-2.5 h-2.5 rounded-full mr-2 shrink-0" :style="{ backgroundColor: col.color }" />
+              <i v-else class="mdi mdi-inbox-outline text-gray-400 dark:text-gray-500 text-sm mr-2" />
+              <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ col.name }}</span>
               <span class="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                {{ getTodosForCategory(category).length }}
+                {{ getTodosForList(col.id).length }}
               </span>
             </div>
             <!-- Task cards in column -->
             <div class="flex flex-col gap-2">
               <div
-                v-for="todo in getTodosForCategory(category)"
+                v-for="todo in getTodosForList(col.id)"
                 :key="todo.id"
                 :class="[
                   'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer',
@@ -117,13 +121,6 @@
                       >
                         <i class="mdi mdi-clock-outline text-xs" />
                         {{ formatDateTime(todo.due_date) }}
-                      </span>
-                      <span
-                        v-if="todo.todo_list_id && selectedListId === null"
-                        class="text-xs px-2 py-0.5 rounded-md font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                        :style="{ borderLeft: `3px solid ${getListColor(todo.todo_list_id)}` }"
-                      >
-                        {{ getListName(todo.todo_list_id) }}
                       </span>
                       <span
                         v-if="todo.event_id"
@@ -319,6 +316,7 @@ const editTodoDialog = ref(false)
 const editingTodo = ref(null)
 const filter = ref('all')
 const selectedListId = ref(null)
+const hiddenColumns = ref(new Set())
 
 const infoModal = ref({ open: false, todo: null })
 
@@ -350,22 +348,25 @@ const filteredTodos = computed(() => {
   return filteredByList.value
 })
 
-// Unique sorted categories from filtered todos
-const categoryColumns = computed(() => {
-  const cats = new Set()
-  for (const t of filteredTodos.value) {
-    cats.add(t.category || 'Default')
-  }
-  const sorted = [...cats].sort((a, b) => {
-    if (a === 'Default') return -1
-    if (b === 'Default') return 1
-    return a.localeCompare(b)
-  })
-  return sorted
+// List-based columns: all todo lists + a "Default" entry for tasks with no list
+const listColumns = computed(() => {
+  // "Default" column (null id) for tasks with no list, followed by named lists
+  const allCols = [{ id: null, name: 'Default', color: '#6b7280' }, ...todoLists.value]
+  return allCols.filter((col) => !hiddenColumns.value.has(col.id ?? '__default__'))
 })
 
-function getTodosForCategory(category) {
-  return filteredTodos.value.filter((t) => (t.category || 'Default') === category)
+function getTodosForList(listId) {
+  return filteredTodos.value.filter((t) =>
+    listId === null ? !t.todo_list_id : t.todo_list_id === listId
+  )
+}
+
+function toggleColumn(colKey) {
+  const key = colKey === null ? '__default__' : colKey
+  const next = new Set(hiddenColumns.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  hiddenColumns.value = next
 }
 
 const pendingCount = computed(() => filteredByList.value.filter((t) => !t.completed).length)
