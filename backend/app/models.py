@@ -42,6 +42,7 @@ class Todo(Base):
     completed = Column(Boolean, default=False)
     priority = Column(String(20), default="medium")
     due_date = Column(DateTime(timezone=True), nullable=True)
+    todo_list_id = Column(Integer, ForeignKey("todo_lists.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -69,6 +70,15 @@ class SubtaskCategory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class TodoList(Base):
+    __tablename__ = "todo_lists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    color = Column(String(50), nullable=False, default="#3b82f6")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Subtask(Base):
     __tablename__ = "subtasks"
 
@@ -76,5 +86,6 @@ class Subtask(Base):
     event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
     category_id = Column(Integer, ForeignKey("subtask_categories.id", ondelete="SET NULL"), nullable=True)
     title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

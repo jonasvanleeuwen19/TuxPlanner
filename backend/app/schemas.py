@@ -67,6 +67,32 @@ class EventResponse(EventBase):
     ical_uid: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    subtask_category_names: List[str] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ── Todo List ─────────────────────────────────────────────────
+
+
+class TodoListBase(BaseModel):
+    name: str
+    color: str = "#3b82f6"
+
+
+class TodoListCreate(TodoListBase):
+    pass
+
+
+class TodoListUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
+class TodoListResponse(TodoListBase):
+    id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -77,6 +103,7 @@ class TodoBase(BaseModel):
     description: Optional[str] = None
     priority: Optional[str] = "medium"
     due_date: Optional[datetime] = None
+    todo_list_id: Optional[int] = None
 
 
 class TodoCreate(TodoBase):
@@ -89,6 +116,7 @@ class TodoUpdate(BaseModel):
     completed: Optional[bool] = None
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
+    todo_list_id: Optional[int] = None
 
 
 class TodoResponse(TodoBase):
@@ -155,6 +183,7 @@ class SubtaskCategoryResponse(SubtaskCategoryBase):
 
 class SubtaskBase(BaseModel):
     title: str
+    description: Optional[str] = None
     category_id: Optional[int] = None
     completed: bool = False
 
@@ -165,6 +194,7 @@ class SubtaskCreate(SubtaskBase):
 
 class SubtaskUpdate(BaseModel):
     title: Optional[str] = None
+    description: Optional[str] = None
     category_id: Optional[int] = None
     completed: Optional[bool] = None
 

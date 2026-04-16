@@ -14,7 +14,7 @@ export const eventsApi = {
 }
 
 export const todosApi = {
-  list: () => api.get('/todos/'),
+  list: (params = {}) => api.get('/todos/', { params }),
   get: (id) => api.get(`/todos/${id}`),
   create: (data) => api.post('/todos/', data),
   update: (id, data) => api.put(`/todos/${id}`, data),
@@ -36,6 +36,14 @@ export const calendarListsApi = {
   create: (data) => api.post('/calendar-lists/', data),
   update: (id, data) => api.put(`/calendar-lists/${id}`, data),
   delete: (id) => api.delete(`/calendar-lists/${id}`),
+}
+
+export const todoListsApi = {
+  list: () => api.get('/todo-lists/'),
+  get: (id) => api.get(`/todo-lists/${id}`),
+  create: (data) => api.post('/todo-lists/', data),
+  update: (id, data) => api.put(`/todo-lists/${id}`, data),
+  delete: (id) => api.delete(`/todo-lists/${id}`),
 }
 
 export const subtaskCategoriesApi = {
