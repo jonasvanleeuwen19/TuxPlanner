@@ -25,14 +25,14 @@
       :value="modelValue"
       :rows="rows"
       :placeholder="placeholder"
-      class="md-textarea"
+      class="md-textarea bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
       @input="$emit('update:modelValue', $event.target.value)"
     />
 
     <!-- Preview mode -->
     <div
       v-else
-      class="md-preview"
+      class="md-preview bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
       v-html="renderedHtml"
     />
   </div>

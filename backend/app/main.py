@@ -27,6 +27,12 @@ def run_migrations():
         # New migrations
         "ALTER TABLE subtasks ADD COLUMN IF NOT EXISTS description TEXT",
         "ALTER TABLE todos ADD COLUMN IF NOT EXISTS todo_list_id INTEGER",
+        "ALTER TABLE todos ADD COLUMN IF NOT EXISTS category VARCHAR(255) DEFAULT 'Default'",
+        "UPDATE todos SET category = 'Default' WHERE category IS NULL",
+        "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS feed_type VARCHAR(20) DEFAULT 'ical'",
+        "UPDATE ical_feeds SET feed_type = 'ical' WHERE feed_type IS NULL",
+        "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS caldav_username VARCHAR(255)",
+        "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS caldav_password TEXT",
     ]
     with engine.begin() as conn:
         for stmt in migrations:

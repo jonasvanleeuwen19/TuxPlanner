@@ -148,9 +148,16 @@
             @click="onEventClick(ev)"
           >
             <div class="cal-list-dot" :style="{ backgroundColor: ev.backgroundColor || '#3b82f6' }" />
-            <div>
+            <div class="flex-1 min-w-0">
               <div class="cal-list-title">{{ ev.title }}</div>
               <div class="cal-list-time">{{ ev.allDay ? 'All day' : formatTime(ev.start) }}</div>
+              <div v-if="(ev.extendedProps?.subtask_category_names || []).length" class="cal-cat-tags mt-1">
+                <span
+                  v-for="tag in ev.extendedProps.subtask_category_names"
+                  :key="tag"
+                  class="cal-cat-tag-list"
+                >{{ tag }}</span>
+              </div>
             </div>
           </div>
         </template>
@@ -372,24 +379,24 @@ onMounted(emitDatesSet)
 }
 
 .cal-day--normal {
-  background: rgba(249, 250, 251, 0.5);
+  background: #f9fafb;
 }
 .cal-day--normal:hover {
-  background: rgba(239, 246, 255, 0.7);
+  background: #eff6ff;
 }
 :global(.dark) .cal-day--normal {
-  background: rgba(31, 41, 55, 0.3);
+  background: #1f2937;
 }
 :global(.dark) .cal-day--normal:hover {
-  background: rgba(55, 65, 81, 0.5);
+  background: #374151;
 }
 
 .cal-day--today {
-  background: rgba(239, 246, 255, 0.8) !important;
+  background: #eff6ff !important;
   border-color: #bfdbfe !important;
 }
 :global(.dark) .cal-day--today {
-  background: rgba(30, 58, 138, 0.15) !important;
+  background: #1e3a8a1a !important;
   border-color: #1e3a8a !important;
 }
 
@@ -478,20 +485,20 @@ onMounted(emitDatesSet)
   min-width: 80px;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(249, 250, 251, 0.3);
+  background: #f9fafb;
   border: 1px solid #e5e7eb;
 }
 :global(.dark) .cal-week-col {
-  background: rgba(31, 41, 55, 0.3);
+  background: #1f2937;
   border-color: #374151;
 }
 
 .cal-week-col--today {
-  background: rgba(239, 246, 255, 0.6) !important;
+  background: #eff6ff !important;
   border-color: #bfdbfe !important;
 }
 :global(.dark) .cal-week-col--today {
-  background: rgba(30, 58, 138, 0.12) !important;
+  background: #172554 !important;
   border-color: #1e3a8a !important;
 }
 
@@ -558,6 +565,22 @@ onMounted(emitDatesSet)
   line-height: 1.5;
   vertical-align: middle;
   margin-left: 2px;
+}
+
+.cal-cat-tag-list {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #3b82f6;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+}
+:global(.dark) .cal-cat-tag-list {
+  background: #1e3a8a33;
+  color: #93c5fd;
 }
 
 /* ── List view ─────────────────────────────────────────── */
