@@ -38,7 +38,7 @@
 
     <!-- Empty state -->
     <div v-if="filteredTodos.length === 0 && !loading" class="text-center py-16">
-      <i class="mdi mdi-checkbox-marked-circle-outline text-6xl text-blue-300 dark:text-blue-800 block mb-4" />
+      <i class="mdi mdi-checkbox-marked-circle-outline text-6xl text-blue-300 dark:text-gray-600 block mb-4" />
       <h3 class="text-base font-medium text-gray-500 dark:text-gray-400">No tasks yet</h3>
       <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Create your first task to get started</p>
     </div>

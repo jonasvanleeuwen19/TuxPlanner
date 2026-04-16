@@ -20,11 +20,11 @@
     </div>
 
     <div v-if="feeds.length === 0 && !loading" class="text-center py-16">
-      <i class="mdi mdi-calendar-sync-outline text-6xl text-blue-300 dark:text-blue-800 block mb-4" />
+      <i class="mdi mdi-calendar-sync-outline text-6xl text-blue-300 dark:text-gray-600 block mb-4" />
       <h3 class="text-base font-medium text-gray-500 dark:text-gray-400">No ICAL feeds added</h3>
       <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Add an ICAL URL to sync external calendars</p>
       <button
-        class="mt-4 inline-flex items-center gap-1 px-4 py-2 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors"
+        class="mt-4 inline-flex items-center gap-1 px-4 py-2 bg-blue-50 dark:bg-gray-700 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors"
         @click="addDialog = true"
       >
         <i class="mdi mdi-plus" />
@@ -80,7 +80,7 @@
         <div class="flex gap-2 items-center">
           <button
             :disabled="syncingId === feed.id"
-            class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors disabled:opacity-50"
+            class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors disabled:opacity-50"
             @click="syncFeed(feed)"
           >
             <i :class="['mdi mdi-refresh', syncingId === feed.id ? 'animate-spin' : '']" />
@@ -90,8 +90,8 @@
             :class="[
               'flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
               feed.is_active
-                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 hover:bg-amber-100'
-                : 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 hover:bg-green-100'
+                ? 'bg-amber-50 dark:bg-gray-700 text-amber-600 dark:text-amber-400 hover:bg-amber-100'
+                : 'bg-green-50 dark:bg-gray-700 text-green-600 dark:text-green-400 hover:bg-green-100'
             ]"
             @click="toggleActive(feed)"
           >
@@ -118,7 +118,7 @@
       >
         <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
           <div class="flex items-center p-5 pb-3">
-            <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center mr-3">
+            <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-gray-700 flex items-center justify-center mr-3">
               <i class="mdi mdi-calendar-plus text-blue-500 dark:text-blue-400" />
             </div>
             <span class="text-base font-bold">Add ICAL Feed</span>

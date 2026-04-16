@@ -5,17 +5,17 @@
       <span class="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Today</span>
     </div>
 
-    <div class="text-center py-3 mb-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40">
+    <div class="text-center py-3 mb-3 rounded-2xl bg-blue-50 dark:bg-gray-800">
       <div class="text-4xl font-bold text-blue-500 dark:text-blue-400">{{ dayNumber }}</div>
       <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ fullDate }}</div>
     </div>
 
     <div class="grid grid-cols-2 gap-2">
-      <div class="bg-blue-50 dark:bg-blue-950/40 rounded-xl p-2 text-center">
+      <div class="bg-blue-50 dark:bg-gray-800 rounded-xl p-2 text-center">
         <div class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ weekNumber }}</div>
         <div class="text-xs text-gray-500 dark:text-gray-400">Week</div>
       </div>
-      <div class="bg-purple-50 dark:bg-purple-950/40 rounded-xl p-2 text-center">
+      <div class="bg-purple-50 dark:bg-gray-800 rounded-xl p-2 text-center">
         <div class="text-lg font-bold text-purple-600 dark:text-purple-400">{{ dayOfYear }}</div>
         <div class="text-xs text-gray-500 dark:text-gray-400">Day of year</div>
       </div>

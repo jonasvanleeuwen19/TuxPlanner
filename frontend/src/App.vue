@@ -48,13 +48,19 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import { useTheme } from 'vuetify'
 import Sidebar from './components/Sidebar.vue'
+
+const vuetifyTheme = useTheme()
 
 const theme = ref(localStorage.getItem('theme') || 'light')
 
-watch(theme, (val) => {
+function applyTheme(val) {
   document.documentElement.classList.toggle('dark', val === 'dark')
-}, { immediate: true })
+  vuetifyTheme.global.name.value = val === 'dark' ? 'customDark' : 'customLight'
+}
+
+watch(theme, applyTheme, { immediate: true })
 
 function toggleTheme() {
   theme.value = theme.value === 'light' ? 'dark' : 'light'
