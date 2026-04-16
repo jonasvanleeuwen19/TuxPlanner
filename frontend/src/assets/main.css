@@ -13,3 +13,12 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* Native inputs (date, datetime-local, time) respect OS dark mode based on color-scheme */
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="time"],
+.dark input[type="month"],
+.dark select {
+  color-scheme: dark;
+}

@@ -53,9 +53,9 @@
       >
         <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
           <div class="flex items-center p-5 pb-3">
-            <span class="text-base font-bold">New Calendar List</span>
+            <span class="text-base font-bold text-gray-900 dark:text-gray-100">New Calendar List</span>
             <div class="flex-1" />
-            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="addDialog = false">
+            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" @click="addDialog = false">
               <i class="mdi mdi-close" />
             </button>
           </div>
@@ -67,7 +67,7 @@
                 v-model="addForm.name"
                 type="text"
                 autofocus
-                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p v-if="addError" class="text-xs text-red-500 mt-1">{{ addError }}</p>
             </div>
@@ -114,9 +114,9 @@
       >
         <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
           <div class="flex items-center p-5 pb-3">
-            <span class="text-base font-bold">Edit Calendar List</span>
+            <span class="text-base font-bold text-gray-900 dark:text-gray-100">Edit Calendar List</span>
             <div class="flex-1" />
-            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="editDialog = false">
+            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" @click="editDialog = false">
               <i class="mdi mdi-close" />
             </button>
           </div>
@@ -128,7 +128,7 @@
                 v-model="editForm.name"
                 type="text"
                 :disabled="!!editForm.ical_feed_id"
-                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <p v-if="editForm.ical_feed_id" class="text-xs text-gray-500 mt-1">Name is managed by ICAL feed</p>
               <p v-if="editError" class="text-xs text-red-500 mt-1">{{ editError }}</p>

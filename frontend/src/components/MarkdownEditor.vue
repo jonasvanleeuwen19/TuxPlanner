@@ -32,7 +32,7 @@
     <!-- Preview mode -->
     <div
       v-else
-      class="md-preview prose dark:prose-invert"
+      class="md-preview"
       v-html="renderedHtml"
     />
   </div>
@@ -61,19 +61,28 @@ const renderedHtml = computed(() => {
 </script>
 
 <style scoped>
+/* ── Shell ────────────────────────────────────────────────── */
 .md-editor {
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   overflow: hidden;
 }
+:global(.dark) .md-editor {
+  border-color: #374151;
+}
 
+/* ── Tab bar ──────────────────────────────────────────────── */
 .md-editor-tabs {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid #d1d5db;
+  background: #f9fafb;
   padding: 0 4px;
   gap: 2px;
+}
+:global(.dark) .md-editor-tabs {
+  border-bottom-color: #374151;
+  background: #1f2937;
 }
 
 .md-tab {
@@ -82,7 +91,7 @@ const renderedHtml = computed(() => {
   font-weight: 500;
   border: none;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  color: #6b7280;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
@@ -90,41 +99,62 @@ const renderedHtml = computed(() => {
   align-items: center;
   gap: 4px;
 }
+:global(.dark) .md-tab {
+  color: #9ca3af;
+}
 
 .md-tab--active {
-  color: rgb(var(--v-theme-primary));
-  border-bottom-color: rgb(var(--v-theme-primary));
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+:global(.dark) .md-tab--active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
 }
 
 .md-label {
   margin-left: auto;
   font-size: 0.7rem;
-  color: rgba(var(--v-theme-on-surface), 0.4);
+  color: #9ca3af;
   padding-right: 8px;
 }
+:global(.dark) .md-label {
+  color: #6b7280;
+}
 
+/* ── Textarea ─────────────────────────────────────────────── */
 .md-textarea {
   width: 100%;
   padding: 10px 12px;
   font-size: 0.85rem;
   font-family: 'Menlo', 'Consolas', monospace;
-  background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.87);
+  background: #ffffff;
+  color: #111827;
   border: none;
   outline: none;
   resize: vertical;
   min-height: 80px;
   line-height: 1.6;
 }
+:global(.dark) .md-textarea {
+  background: #111827;
+  color: #f3f4f6;
+}
 
+/* ── Preview ──────────────────────────────────────────────── */
 .md-preview {
   padding: 10px 12px;
   font-size: 0.85rem;
   min-height: 80px;
-  color: rgba(var(--v-theme-on-surface), 0.87);
+  color: #111827;
+  background: #ffffff;
+}
+:global(.dark) .md-preview {
+  color: #f3f4f6;
+  background: #111827;
 }
 
-/* Minimal Markdown prose styles */
+/* Markdown prose styles */
 .md-preview :deep(p) { margin: 0 0 0.5rem; }
 .md-preview :deep(p:last-child) { margin-bottom: 0; }
 .md-preview :deep(h1),
@@ -138,31 +168,50 @@ const renderedHtml = computed(() => {
 .md-preview :deep(ol) { margin: 0.25rem 0 0.5rem 1.25rem; }
 .md-preview :deep(li) { margin-bottom: 0.15rem; }
 .md-preview :deep(code) {
-  background: rgba(var(--v-theme-on-surface), 0.08);
+  background: #f3f4f6;
   border-radius: 3px;
   padding: 1px 4px;
   font-family: monospace;
   font-size: 0.82em;
 }
+:global(.dark) .md-preview :deep(code) {
+  background: #374151;
+}
 .md-preview :deep(pre) {
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  background: #f3f4f6;
   border-radius: 6px;
   padding: 8px 12px;
   overflow-x: auto;
   margin: 0.5rem 0;
+}
+:global(.dark) .md-preview :deep(pre) {
+  background: #374151;
 }
 .md-preview :deep(pre code) {
   background: transparent;
   padding: 0;
 }
 .md-preview :deep(blockquote) {
-  border-left: 3px solid rgba(var(--v-theme-primary), 0.5);
+  border-left: 3px solid #93c5fd;
   margin: 0.5rem 0;
   padding: 0 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  color: #6b7280;
 }
-.md-preview :deep(a) { color: rgb(var(--v-theme-primary)); }
+:global(.dark) .md-preview :deep(blockquote) {
+  border-left-color: #3b82f6;
+  color: #9ca3af;
+}
+.md-preview :deep(a) { color: #3b82f6; }
+:global(.dark) .md-preview :deep(a) { color: #60a5fa; }
 .md-preview :deep(strong) { font-weight: 600; }
-.md-preview :deep(hr) { border-color: rgba(var(--v-border-color), var(--v-border-opacity)); margin: 0.75rem 0; }
-.md-empty { color: rgba(var(--v-theme-on-surface), 0.4); font-style: italic; }
+.md-preview :deep(hr) {
+  border-color: #e5e7eb;
+  margin: 0.75rem 0;
+}
+:global(.dark) .md-preview :deep(hr) {
+  border-color: #374151;
+}
+.md-empty { color: #9ca3af; font-style: italic; }
+:global(.dark) .md-empty { color: #6b7280; }
 </style>
+
