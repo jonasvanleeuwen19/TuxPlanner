@@ -1,106 +1,108 @@
 <template>
-  <v-container fluid class="pa-4 pa-md-6">
-    <div class="d-flex align-center mb-6">
+  <div class="p-4 md:p-6">
+    <div class="flex items-center mb-6">
       <div>
-        <div class="text-h5 font-weight-bold">Tasks</div>
-        <div class="text-body-2 text-medium-emphasis">{{ pendingCount }} remaining</div>
+        <h1 class="text-xl font-bold">Tasks</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ pendingCount }} remaining</p>
       </div>
-      <v-spacer />
-      <v-btn-toggle v-model="filter" mandatory density="compact" rounded="lg" color="primary" class="mr-3">
-        <v-btn value="all" size="small">All</v-btn>
-        <v-btn value="pending" size="small">Active</v-btn>
-        <v-btn value="completed" size="small">Done</v-btn>
-      </v-btn-toggle>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        rounded="lg"
-        elevation="0"
+      <div class="flex-1" />
+      <!-- Filter toggle -->
+      <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mr-3">
+        <button
+          v-for="opt in filterOptions"
+          :key="opt.value"
+          :class="[
+            'px-3 py-1.5 text-xs font-medium transition-colors',
+            filter === opt.value
+              ? 'bg-blue-500 text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+          ]"
+          @click="filter = opt.value"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+      <button
+        class="flex items-center gap-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
         @click="todoDialog = true"
       >
+        <i class="mdi mdi-plus" />
         Add Task
-      </v-btn>
+      </button>
     </div>
 
-    <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" rounded />
+    <!-- Loading bar -->
+    <div v-if="loading" class="w-full h-1 bg-gray-200 dark:bg-gray-800 rounded mb-4 overflow-hidden">
+      <div class="h-full bg-blue-500 animate-pulse w-full" />
+    </div>
 
+    <!-- Empty state -->
     <div v-if="filteredTodos.length === 0 && !loading" class="text-center py-16">
-      <v-icon icon="mdi-checkbox-marked-circle-outline" size="64" color="primary" opacity="0.3" class="mb-4" />
-      <div class="text-h6 text-medium-emphasis font-weight-medium">No tasks yet</div>
-      <div class="text-body-2 text-disabled mt-1">Create your first task to get started</div>
+      <i class="mdi mdi-checkbox-marked-circle-outline text-6xl text-blue-300 dark:text-blue-800 block mb-4" />
+      <h3 class="text-base font-medium text-gray-500 dark:text-gray-400">No tasks yet</h3>
+      <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Create your first task to get started</p>
     </div>
 
-    <v-row>
-      <v-col
+    <!-- Tasks grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div
         v-for="todo in filteredTodos"
         :key="todo.id"
-        cols="12"
-        sm="6"
-        lg="4"
+        :class="[
+          'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md',
+          todo.completed ? 'opacity-60' : ''
+        ]"
       >
-        <v-card
-          rounded="xl"
-          elevation="0"
-          border
-          :class="{ 'todo-completed': todo.completed }"
-          class="todo-card"
-        >
-          <v-card-text class="pa-4">
-            <div class="d-flex align-start gap-3">
-              <v-checkbox-btn
-                :model-value="todo.completed"
-                color="primary"
-                class="mt-1 flex-shrink-0"
-                @update:model-value="toggleTodo(todo)"
-              />
-              <div class="flex-grow-1 min-width-0">
-                <div
-                  class="text-body-1 font-weight-medium"
-                  :class="{ 'text-decoration-line-through text-disabled': todo.completed }"
-                >
-                  {{ todo.title }}
-                </div>
-                <div v-if="todo.description" class="text-body-2 text-medium-emphasis mt-1 text-truncate">
-                  {{ todo.description }}
-                </div>
-                <div class="d-flex align-center gap-2 mt-2 flex-wrap">
-                  <v-chip
-                    v-if="todo.priority"
-                    size="x-small"
-                    :color="priorityColor(todo.priority)"
-                    variant="tonal"
-                    rounded="lg"
-                  >
-                    {{ todo.priority }}
-                  </v-chip>
-                  <v-chip
-                    v-if="todo.due_date"
-                    size="x-small"
-                    :color="isOverdue(todo) ? 'error' : 'default'"
-                    variant="tonal"
-                    prepend-icon="mdi-clock-outline"
-                    rounded="lg"
-                  >
-                    {{ formatDateTime(todo.due_date) }}
-                  </v-chip>
-                </div>
-              </div>
-              <v-btn
-                icon="mdi-trash-can-outline"
-                size="x-small"
-                variant="text"
-                color="error"
-                class="flex-shrink-0"
-                @click="deleteTodo(todo.id)"
-              />
+        <div class="flex items-start gap-3">
+          <input
+            type="checkbox"
+            :checked="todo.completed"
+            class="mt-1 w-4 h-4 rounded accent-blue-500 cursor-pointer shrink-0"
+            @change="toggleTodo(todo)"
+          />
+          <div class="flex-1 min-w-0">
+            <p
+              :class="[
+                'text-sm font-medium',
+                todo.completed ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'
+              ]"
+            >
+              {{ todo.title }}
+            </p>
+            <p v-if="todo.description" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+              {{ todo.description }}
+            </p>
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+              <span
+                v-if="todo.priority"
+                :class="['text-xs px-2 py-0.5 rounded-md font-medium', priorityClass(todo.priority)]"
+              >
+                {{ todo.priority }}
+              </span>
+              <span
+                v-if="todo.due_date"
+                :class="[
+                  'text-xs px-2 py-0.5 rounded-md font-medium flex items-center gap-1',
+                  isOverdue(todo) ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                ]"
+              >
+                <i class="mdi mdi-clock-outline text-xs" />
+                {{ formatDateTime(todo.due_date) }}
+              </span>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+          </div>
+          <button
+            class="shrink-0 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
+            @click="deleteTodo(todo.id)"
+          >
+            <i class="mdi mdi-trash-can-outline text-base" />
+          </button>
+        </div>
+      </div>
+    </div>
 
     <TodoDialog v-model="todoDialog" @save="createTodo" />
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -112,6 +114,11 @@ const todos = ref([])
 const loading = ref(false)
 const todoDialog = ref(false)
 const filter = ref('all')
+const filterOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'pending', label: 'Active' },
+  { value: 'completed', label: 'Done' },
+]
 
 const filteredTodos = computed(() => {
   if (filter.value === 'pending') return todos.value.filter((t) => !t.completed)
@@ -171,30 +178,11 @@ function isOverdue(todo) {
   return !todo.completed && todo.due_date && new Date(todo.due_date) < new Date()
 }
 
-function priorityColor(priority) {
-  if (priority === 'high') return 'error'
-  if (priority === 'medium') return 'warning'
-  return 'success'
+function priorityClass(priority) {
+  if (priority === 'high') return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+  if (priority === 'medium') return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+  return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
 }
 
 onMounted(fetchTodos)
 </script>
-
-<style scoped>
-.todo-card {
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-
-.todo-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
-  transform: translateY(-1px);
-}
-
-.todo-completed {
-  opacity: 0.65;
-}
-
-.min-width-0 {
-  min-width: 0;
-}
-</style>
