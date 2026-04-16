@@ -133,6 +133,10 @@ const emit = defineEmits(['event-click', 'date-click', 'dates-set'])
 const DOW_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000
+const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000
+const LIST_VIEW_RANGE_MS = 60 * DAY_IN_MS
+
 const view = ref('month')
 const currentDate = ref(new Date())
 
@@ -200,10 +204,10 @@ const weekDays = computed(() => {
 
 function getDayEvents(date) {
   const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+  const dayEnd = new Date(dayStart.getTime() + DAY_IN_MS)
   return props.events.filter((ev) => {
     const start = new Date(ev.start)
-    const end = ev.end ? new Date(ev.end) : new Date(start.getTime() + 60 * 60 * 1000)
+    const end = ev.end ? new Date(ev.end) : new Date(start.getTime() + DEFAULT_EVENT_DURATION_MS)
     return start < dayEnd && end > dayStart
   })
 }
@@ -255,15 +259,15 @@ function emitDatesSet() {
   if (view.value === 'month') {
     const days = monthDays.value
     start = new Date(days[0].date)
-    end = new Date(days[days.length - 1].date.getTime() + 24 * 60 * 60 * 1000)
+    end = new Date(days[days.length - 1].date.getTime() + DAY_IN_MS)
   } else if (view.value === 'week') {
     const days = weekDays.value
     start = new Date(days[0].date)
-    end = new Date(days[days.length - 1].date.getTime() + 24 * 60 * 60 * 1000)
+    end = new Date(days[days.length - 1].date.getTime() + DAY_IN_MS)
   } else {
     start = new Date()
     start.setHours(0, 0, 0, 0)
-    end = new Date(start.getTime() + 60 * 24 * 60 * 60 * 1000)
+    end = new Date(start.getTime() + LIST_VIEW_RANGE_MS)
   }
   emit('dates-set', { start, end })
 }
