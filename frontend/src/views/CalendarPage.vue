@@ -92,7 +92,7 @@ const calendarEvents = computed(() =>
 // Filter out events from hidden lists
 const visibleCalendarEvents = computed(() =>
   calendarEvents.value.filter((e) => {
-    if (e.calendar_list_id == null) return true
+    if (e.calendar_list_id === null || e.calendar_list_id === undefined) return true
     return visibleListIds.value.has(e.calendar_list_id)
   })
 )

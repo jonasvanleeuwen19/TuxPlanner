@@ -54,6 +54,9 @@ class IcalFeed(Base):
     url = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True)
     last_synced = Column(DateTime(timezone=True), nullable=True)
+    # calendar_list_id is stored as a plain integer (no FK constraint) to avoid a
+    # circular foreign-key cycle with calendar_lists.ical_feed_id → ical_feeds.id.
+    # Application logic in the ical_feeds router enforces the relationship.
     calendar_list_id = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
