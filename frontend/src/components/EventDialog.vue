@@ -139,7 +139,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save', 'delete'])
 
 const formRef = ref(null)
-const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#0ea5e9']
+const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#0ea5e9']
 
 const defaultForm = () => ({
   id: null,
@@ -149,7 +149,7 @@ const defaultForm = () => ({
   start: '',
   end: '',
   all_day: false,
-  color: '#6366f1',
+  color: '#3b82f6',
 })
 
 const form = ref(defaultForm())
@@ -169,7 +169,7 @@ watch(
         start: formatForInput(newEvent.start, newEvent.all_day),
         end: newEvent.end ? formatForInput(newEvent.end, newEvent.all_day) : '',
         all_day: newEvent.all_day || false,
-        color: newEvent.color || '#6366f1',
+        color: newEvent.color || '#3b82f6',
         source: newEvent.source || null,
       }
     } else {
@@ -209,7 +209,7 @@ function close() {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(var(--v-theme-primary), 0.1);
   display: flex;
   align-items: center;
   justify-content: center;

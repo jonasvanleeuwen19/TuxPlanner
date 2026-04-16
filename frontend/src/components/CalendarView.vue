@@ -1,275 +1,451 @@
 <template>
-  <div class="calendar-wrapper" :class="{ 'calendar-dark': isDark }">
-    <FullCalendar ref="calendarRef" :options="calendarOptions" />
+  <div class="cal-root">
+    <!-- Toolbar -->
+    <div class="d-flex align-center mb-4 flex-wrap gap-2">
+      <div class="d-flex align-center gap-1">
+        <v-btn icon="mdi-chevron-left" variant="text" size="small" @click="prev" />
+        <v-btn variant="tonal" size="small" rounded="lg" class="px-3" @click="goToToday">Today</v-btn>
+        <v-btn icon="mdi-chevron-right" variant="text" size="small" @click="next" />
+      </div>
+      <span class="text-h6 font-weight-bold ml-1">{{ title }}</span>
+      <v-spacer />
+      <v-btn-toggle v-model="view" mandatory density="compact" rounded="lg" color="primary" variant="outlined">
+        <v-btn value="month" size="small">Month</v-btn>
+        <v-btn value="week" size="small">Week</v-btn>
+        <v-btn value="list" size="small">List</v-btn>
+      </v-btn-toggle>
+    </div>
+
+    <!-- Month View -->
+    <template v-if="view === 'month'">
+      <div class="cal-dow-header">
+        <div v-for="d in DOW_HEADERS" :key="d" class="cal-dow-cell">{{ d }}</div>
+      </div>
+      <div class="cal-month-grid">
+        <div
+          v-for="(day, i) in monthDays"
+          :key="i"
+          class="cal-day"
+          :class="{ 'cal-day--other': !day.isCurrentMonth, 'cal-day--today': day.isToday }"
+          @click="onDayClick(day)"
+        >
+          <div class="cal-day-num">
+            <span :class="day.isToday ? 'cal-today-dot' : ''">{{ day.date.getDate() }}</span>
+          </div>
+          <div class="cal-events">
+            <div
+              v-for="ev in getDayEvents(day.date).slice(0, 3)"
+              :key="ev.id"
+              class="cal-event"
+              :style="{ backgroundColor: ev.backgroundColor || 'rgb(var(--v-theme-primary))' }"
+              @click.stop="onEventClick(ev)"
+            >
+              <span v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</span>
+              {{ ev.title }}
+            </div>
+            <div v-if="getDayEvents(day.date).length > 3" class="cal-event-more">
+              +{{ getDayEvents(day.date).length - 3 }} more
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Week View -->
+    <template v-else-if="view === 'week'">
+      <div class="cal-week-grid">
+        <div
+          v-for="(day, i) in weekDays"
+          :key="i"
+          class="cal-week-col"
+          :class="{ 'cal-week-col--today': day.isToday }"
+        >
+          <div class="cal-week-header" @click="onDayClick(day)">
+            <div class="text-caption font-weight-semibold text-uppercase text-medium-emphasis">
+              {{ DOW_SHORT[day.date.getDay()] }}
+            </div>
+            <div class="mt-1">
+              <span :class="day.isToday ? 'cal-today-dot cal-today-dot--lg' : 'text-h6 font-weight-bold'">
+                {{ day.date.getDate() }}
+              </span>
+            </div>
+          </div>
+          <div class="cal-week-events">
+            <div
+              v-for="ev in getDayEvents(day.date)"
+              :key="ev.id"
+              class="cal-event mb-1"
+              :style="{ backgroundColor: ev.backgroundColor || 'rgb(var(--v-theme-primary))' }"
+              @click.stop="onEventClick(ev)"
+            >
+              <div v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</div>
+              {{ ev.title }}
+            </div>
+            <div v-if="getDayEvents(day.date).length === 0" class="cal-week-empty" @click="onDayClick(day)" />
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- List View -->
+    <template v-else>
+      <div v-if="sortedListEvents.length === 0" class="text-center py-12">
+        <v-icon icon="mdi-calendar-blank-outline" size="52" color="medium-emphasis" class="mb-3" />
+        <div class="text-body-2 text-medium-emphasis">No upcoming events</div>
+      </div>
+      <template v-else>
+        <template v-for="(group, dateStr) in groupedListEvents" :key="dateStr">
+          <div class="cal-list-date text-caption font-weight-semibold text-uppercase text-medium-emphasis px-1 pt-3 pb-1">
+            {{ dateStr }}
+          </div>
+          <v-card
+            v-for="ev in group"
+            :key="ev.id"
+            variant="tonal"
+            rounded="lg"
+            class="mb-1"
+            style="cursor: pointer"
+            @click="onEventClick(ev)"
+          >
+            <v-card-text class="d-flex align-center pa-3 gap-3">
+              <div class="cal-list-dot" :style="{ backgroundColor: ev.backgroundColor || 'rgb(var(--v-theme-primary))' }" />
+              <div>
+                <div class="text-body-2 font-weight-medium">{{ ev.title }}</div>
+                <div class="text-caption text-medium-emphasis">{{ ev.allDay ? 'All day' : formatTime(ev.start) }}</div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </template>
+      </template>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import FullCalendar from '@fullcalendar/vue3'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import listPlugin from '@fullcalendar/list'
-import interactionPlugin from '@fullcalendar/interaction'
+import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps({
-  events: {
-    type: Array,
-    default: () => [],
-  },
-  isDark: {
-    type: Boolean,
-    default: false,
-  },
+  events: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['event-click', 'date-click', 'event-drop', 'dates-set', 'select'])
+const emit = defineEmits(['event-click', 'date-click', 'dates-set'])
 
-const calendarRef = ref(null)
+const DOW_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const calendarOptions = computed(() => ({
-  plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
-  initialView: 'dayGridMonth',
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
-  },
-  buttonText: {
-    today: 'Today',
-    month: 'Month',
-    week: 'Week',
-    day: 'Day',
-    list: 'List',
-  },
-  events: props.events,
-  editable: true,
-  selectable: true,
-  selectMirror: true,
-  dayMaxEvents: 3,
-  weekends: true,
-  height: 'auto',
-  locale: 'en',
-  nowIndicator: true,
-  weekNumbers: true,
-  weekNumberFormat: { week: 'short' },
-  eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-  slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-  eventContent: renderEventContent,
-  eventClick: (info) => emit('event-click', info),
-  dateClick: (info) => emit('date-click', info),
-  eventDrop: (info) => emit('event-drop', info),
-  datesSet: (info) => emit('dates-set', info),
-  select: (info) => emit('select', info),
-}))
+const view = ref('month')
+const currentDate = ref(new Date())
 
-function renderEventContent(arg) {
-  const isIcal = arg.event.extendedProps?.source === 'ical'
-  const location = arg.event.extendedProps?.location
-  return {
-    html: `<div class="fc-event-inner">
-      <span class="fc-event-title-text">${arg.event.title}</span>
-      ${location ? `<span class="fc-event-location"><span class="mdi mdi-map-marker-outline"></span>${location}</span>` : ''}
-      ${isIcal ? '<span class="fc-event-ical-badge">iCal</span>' : ''}
-    </div>`,
-  }
+const todayDate = new Date()
+todayDate.setHours(0, 0, 0, 0)
+
+function isSameDay(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
 }
+
+const title = computed(() => {
+  if (view.value === 'month') {
+    return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+  if (view.value === 'week') {
+    const days = weekDays.value
+    const start = days[0].date
+    const end = days[days.length - 1].date
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.toLocaleDateString('en-US', { month: 'long' })} ${start.getDate()} \u2013 ${end.getDate()}, ${start.getFullYear()}`
+    }
+    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} \u2013 ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+  }
+  return 'Upcoming Events'
+})
+
+const monthDays = computed(() => {
+  const year = currentDate.value.getFullYear()
+  const month = currentDate.value.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDow = (firstDay.getDay() + 6) % 7
+
+  const days = []
+  for (let i = startDow; i > 0; i--) {
+    const d = new Date(year, month, 1 - i)
+    days.push({ date: d, isCurrentMonth: false, isToday: isSameDay(d, todayDate) })
+  }
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    const d = new Date(year, month, i)
+    days.push({ date: d, isCurrentMonth: true, isToday: isSameDay(d, todayDate) })
+  }
+  const remaining = 42 - days.length
+  for (let i = 1; i <= remaining; i++) {
+    const d = new Date(year, month + 1, i)
+    days.push({ date: d, isCurrentMonth: false, isToday: isSameDay(d, todayDate) })
+  }
+  return days
+})
+
+const weekDays = computed(() => {
+  const d = new Date(currentDate.value)
+  const dow = (d.getDay() + 6) % 7
+  d.setDate(d.getDate() - dow)
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(d)
+    day.setDate(d.getDate() + i)
+    return { date: day, isCurrentMonth: true, isToday: isSameDay(day, todayDate) }
+  })
+})
+
+function getDayEvents(date) {
+  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+  return props.events.filter((ev) => {
+    const start = new Date(ev.start)
+    const end = ev.end ? new Date(ev.end) : new Date(start.getTime() + 60 * 60 * 1000)
+    return start < dayEnd && end > dayStart
+  })
+}
+
+const sortedListEvents = computed(() =>
+  [...props.events].sort((a, b) => new Date(a.start) - new Date(b.start))
+)
+
+const groupedListEvents = computed(() => {
+  const groups = {}
+  for (const ev of sortedListEvents.value) {
+    const key = new Date(ev.start).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+    if (!groups[key]) groups[key] = []
+    groups[key].push(ev)
+  }
+  return groups
+})
+
+function formatTime(dateStr) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+function prev() {
+  const d = new Date(currentDate.value)
+  if (view.value === 'month') d.setMonth(d.getMonth() - 1)
+  else if (view.value === 'week') d.setDate(d.getDate() - 7)
+  currentDate.value = d
+}
+
+function next() {
+  const d = new Date(currentDate.value)
+  if (view.value === 'month') d.setMonth(d.getMonth() + 1)
+  else if (view.value === 'week') d.setDate(d.getDate() + 7)
+  currentDate.value = d
+}
+
+function goToToday() {
+  currentDate.value = new Date()
+}
+
+function emitDatesSet() {
+  let start, end
+  if (view.value === 'month') {
+    const days = monthDays.value
+    start = new Date(days[0].date)
+    end = new Date(days[days.length - 1].date.getTime() + 24 * 60 * 60 * 1000)
+  } else if (view.value === 'week') {
+    const days = weekDays.value
+    start = new Date(days[0].date)
+    end = new Date(days[days.length - 1].date.getTime() + 24 * 60 * 60 * 1000)
+  } else {
+    start = new Date()
+    start.setHours(0, 0, 0, 0)
+    end = new Date(start.getTime() + 60 * 24 * 60 * 60 * 1000)
+  }
+  emit('dates-set', { start, end })
+}
+
+function onDayClick(day) {
+  emit('date-click', { dateStr: day.date.toISOString(), allDay: true })
+}
+
+function onEventClick(event) {
+  emit('event-click', { event })
+}
+
+watch([view, currentDate], emitDatesSet)
+onMounted(emitDatesSet)
 </script>
 
 <style scoped>
-.calendar-wrapper {
-  background: transparent;
-  border-radius: 20px;
-  overflow: hidden;
+/* ── DOW header ─────────────────────────────────────────── */
+.cal-dow-header {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-bottom: 3px;
 }
 
-:deep(.fc) {
-  font-family: 'Inter', 'Roboto', sans-serif;
+.cal-dow-cell {
+  text-align: center;
+  padding: 6px 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-:deep(.fc-toolbar-title) {
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+/* ── Month grid ─────────────────────────────────────────── */
+.cal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
 }
 
-:deep(.fc-button-primary) {
-  background-color: #6366f1 !important;
-  border-color: #6366f1 !important;
-  border-radius: 8px !important;
+.cal-day {
+  min-height: 96px;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.cal-day:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+
+.cal-day--other {
+  opacity: 0.3;
+}
+
+.cal-day--today {
+  background: rgba(var(--v-theme-primary), 0.07) !important;
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+/* ── Day number ─────────────────────────────────────────── */
+.cal-day-num {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px 3px;
+  font-size: 0.82rem;
   font-weight: 500;
-  font-size: 0.8rem;
-  text-transform: none;
-  box-shadow: none !important;
-  padding: 4px 12px;
+  color: rgba(var(--v-theme-on-surface), 0.8);
 }
 
-:deep(.fc-button-primary:hover) {
-  background-color: #4f46e5 !important;
-  border-color: #4f46e5 !important;
+.cal-today-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-weight: 700;
+  font-size: 0.82rem;
 }
 
-:deep(.fc-button-active) {
-  background-color: #4338ca !important;
-  border-color: #4338ca !important;
+.cal-today-dot--lg {
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
 }
 
-:deep(.fc-button-group) {
+/* ── Event pills ─────────────────────────────────────────── */
+.cal-events {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
 }
 
-:deep(.fc-daygrid-day-number) {
-  font-size: 0.85rem;
+.cal-event {
+  font-size: 0.72rem;
   font-weight: 500;
-  padding: 6px 8px;
-}
-
-:deep(.fc-col-header-cell-cushion) {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 0;
-}
-
-:deep(.fc-daygrid-day.fc-day-today) {
-  background: rgba(99, 102, 241, 0.08) !important;
-}
-
-:deep(.fc-daygrid-day.fc-day-today .fc-daygrid-day-number) {
-  background: #6366f1;
-  color: white;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 4px;
-}
-
-:deep(.fc-event) {
-  border: none !important;
-  border-radius: 6px !important;
-  padding: 1px 4px;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
-  margin-bottom: 1px;
+  transition: opacity 0.15s;
+  line-height: 1.4;
 }
 
-:deep(.fc-event-inner) {
+.cal-event:hover {
+  opacity: 0.85;
+}
+
+.cal-event-time {
+  font-weight: 400;
+  opacity: 0.85;
+  margin-right: 2px;
+}
+
+.cal-event-more {
+  font-size: 0.7rem;
+  padding-left: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* ── Week view ─────────────────────────────────────────── */
+.cal-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.cal-week-col {
+  min-height: 360px;
+  min-width: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.cal-week-col--today {
+  background: rgba(var(--v-theme-primary), 0.06) !important;
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+.cal-week-header {
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  user-select: none;
+}
+
+.cal-week-events {
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  overflow: hidden;
 }
 
-:deep(.fc-event-title-text) {
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-:deep(.fc-event-location) {
-  font-size: 0.7rem;
-  opacity: 0.85;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-:deep(.fc-event-ical-badge) {
-  font-size: 0.6rem;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 3px;
-  padding: 0 3px;
-  align-self: flex-start;
-}
-
-:deep(.fc-list-event) {
+.cal-week-empty {
+  flex: 1;
+  min-height: 60px;
   cursor: pointer;
 }
 
-:deep(.fc-list-event:hover td) {
-  background: rgba(99, 102, 241, 0.06);
+/* ── List view ─────────────────────────────────────────── */
+.cal-list-date {
+  letter-spacing: 0.06em;
+  margin-top: 4px;
 }
 
-:deep(.fc-highlight) {
-  background: rgba(99, 102, 241, 0.15) !important;
-  border-radius: 4px;
-}
-
-:deep(.fc-timegrid-now-indicator-line) {
-  border-color: #6366f1;
-}
-
-:deep(.fc-timegrid-now-indicator-arrow) {
-  border-top-color: #6366f1;
-  border-bottom-color: #6366f1;
-}
-
-.calendar-dark :deep(.fc-theme-standard td),
-.calendar-dark :deep(.fc-theme-standard th),
-.calendar-dark :deep(.fc-theme-standard .fc-scrollgrid) {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-.calendar-dark :deep(.fc-daygrid-day-number),
-.calendar-dark :deep(.fc-col-header-cell-cushion),
-.calendar-dark :deep(.fc-toolbar-title),
-.calendar-dark :deep(.fc-list-event-title),
-.calendar-dark :deep(.fc-list-day-text),
-.calendar-dark :deep(.fc-list-day-side-text) {
-  color: rgba(255, 255, 255, 0.87) !important;
-}
-
-.calendar-dark :deep(.fc-timegrid-slot-label-cushion) {
-  color: rgba(255, 255, 255, 0.6) !important;
-}
-
-.calendar-dark :deep(.fc-daygrid-day.fc-day-today) {
-  background: rgba(129, 140, 248, 0.12) !important;
-}
-
-.calendar-dark :deep(.fc-daygrid-day.fc-day-today .fc-daygrid-day-number) {
-  background: #818cf8;
-}
-
-.calendar-dark :deep(.fc-button-primary) {
-  background-color: #818cf8 !important;
-  border-color: #818cf8 !important;
-}
-
-.calendar-dark :deep(.fc-button-primary:hover) {
-  background-color: #6366f1 !important;
-  border-color: #6366f1 !important;
-}
-
-.calendar-dark :deep(.fc-button-active) {
-  background-color: #4f46e5 !important;
-  border-color: #4f46e5 !important;
-}
-
-.calendar-dark :deep(.fc-list-day-cushion) {
-  background: rgba(255, 255, 255, 0.05) !important;
-}
-
-.calendar-dark :deep(.fc-list-event:hover td) {
-  background: rgba(129, 140, 248, 0.1);
-}
-
-.calendar-dark :deep(.fc-timegrid-now-indicator-line) {
-  border-color: #818cf8;
-}
-
-.calendar-dark :deep(.fc-timegrid-now-indicator-arrow) {
-  border-top-color: #818cf8;
-  border-bottom-color: #818cf8;
-}
-
-.calendar-dark :deep(.fc-highlight) {
-  background: rgba(129, 140, 248, 0.2) !important;
+.cal-list-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>
