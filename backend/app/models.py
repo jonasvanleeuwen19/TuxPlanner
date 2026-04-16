@@ -43,6 +43,7 @@ class Todo(Base):
     priority = Column(String(20), default="medium")
     due_date = Column(DateTime(timezone=True), nullable=True)
     todo_list_id = Column(Integer, ForeignKey("todo_lists.id", ondelete="SET NULL"), nullable=True)
+    category = Column(String(255), nullable=False, default="Default")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -59,6 +60,9 @@ class IcalFeed(Base):
     # circular foreign-key cycle with calendar_lists.ical_feed_id → ical_feeds.id.
     # Application logic in the ical_feeds router enforces the relationship.
     calendar_list_id = Column(Integer, nullable=True)
+    feed_type = Column(String(20), nullable=False, default="ical")  # 'ical' or 'caldav'
+    caldav_username = Column(String(255), nullable=True)
+    caldav_password = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

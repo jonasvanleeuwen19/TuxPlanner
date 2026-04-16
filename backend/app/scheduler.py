@@ -36,83 +36,120 @@ def _str_or_none(value):
     return str(value) if value else None
 
 
+def _process_vevent(db: Session, feed: models.IcalFeed, component):
+    """Process a single VEVENT component and upsert it into the DB."""
+    raw_uid = component.get("UID", "")
+    uid = f"{feed.id}:{raw_uid}"
+    if not raw_uid:
+        return
+
+    summary = str(component.get("SUMMARY", "Untitled"))
+    description = _str_or_none(component.get("DESCRIPTION"))
+    location = _str_or_none(component.get("LOCATION"))
+
+    dtstart = component.get("DTSTART")
+    dtend = component.get("DTEND")
+
+    if dtstart is None:
+        return
+
+    start_dt = dtstart.dt
+    end_dt = dtend.dt if dtend else None
+
+    all_day = isinstance(start_dt, dt_module.date) and not isinstance(start_dt, dt_module.datetime)
+
+    if all_day:
+        start_dt = datetime(start_dt.year, start_dt.month, start_dt.day, tzinfo=timezone.utc)
+        if end_dt and isinstance(end_dt, dt_module.date) and not isinstance(end_dt, dt_module.datetime):
+            end_dt = datetime(end_dt.year, end_dt.month, end_dt.day, tzinfo=timezone.utc)
+    else:
+        if isinstance(start_dt, dt_module.datetime) and start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=timezone.utc)
+        if end_dt and isinstance(end_dt, dt_module.datetime) and end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=timezone.utc)
+
+    existing = db.query(models.Event).filter(
+        models.Event.ical_uid == uid,
+        models.Event.source == "ical",
+    ).first()
+
+    if existing:
+        existing.title = summary
+        existing.description = description
+        existing.location = location
+        existing.start = start_dt
+        existing.end = end_dt
+        existing.all_day = all_day
+        existing.calendar_list_id = feed.calendar_list_id
+    else:
+        db.add(models.Event(
+            title=summary,
+            description=description,
+            location=location,
+            start=start_dt,
+            end=end_dt,
+            all_day=all_day,
+            source="ical",
+            ical_uid=uid,
+            calendar_list_id=feed.calendar_list_id,
+        ))
+
+
+def _sync_ical(db: Session, feed: models.IcalFeed):
+    """Sync an ICAL/webcal feed."""
+    url = feed.url
+    if url.startswith("webcal://"):
+        url = "https://" + url[len("webcal://"):]
+    elif url.startswith("webcals://"):
+        url = "https://" + url[len("webcals://"):]
+    with httpx.Client(follow_redirects=True, timeout=30) as client:
+        response = client.get(url)
+        response.raise_for_status()
+
+    cal = Calendar.from_ical(response.content)
+    for component in cal.walk():
+        if component.name != "VEVENT":
+            continue
+        _process_vevent(db, feed, component)
+
+
+def _sync_caldav(db: Session, feed: models.IcalFeed):
+    """Sync a CalDAV calendar feed."""
+    import caldav
+
+    client = caldav.DAVClient(
+        url=feed.url,
+        username=feed.caldav_username or "",
+        password=feed.caldav_password or "",
+    )
+    principal = client.principal()
+    calendars = principal.calendars()
+
+    for calendar in calendars:
+        events = calendar.events()
+        for event in events:
+            try:
+                cal = Calendar.from_ical(event.data)
+                for component in cal.walk():
+                    if component.name != "VEVENT":
+                        continue
+                    _process_vevent(db, feed, component)
+            except Exception as e:
+                print(f"CalDAV event parse error for feed {feed.id}: {e}")
+
+
 def _sync_feed(db: Session, feed: models.IcalFeed):
     try:
-        url = feed.url
-        if url.startswith("webcal://"):
-            url = "https://" + url[len("webcal://"):]
-        elif url.startswith("webcals://"):
-            url = "https://" + url[len("webcals://"):]
-        with httpx.Client(follow_redirects=True, timeout=30) as client:
-            response = client.get(url)
-            response.raise_for_status()
-
-        cal = Calendar.from_ical(response.content)
-
-        for component in cal.walk():
-            if component.name != "VEVENT":
-                continue
-
-            raw_uid = component.get("UID", "")
-            uid = f"{feed.id}:{raw_uid}"
-            if not raw_uid:
-                continue
-
-            summary = str(component.get("SUMMARY", "Untitled"))
-            description = _str_or_none(component.get("DESCRIPTION"))
-            location = _str_or_none(component.get("LOCATION"))
-
-            dtstart = component.get("DTSTART")
-            dtend = component.get("DTEND")
-
-            if dtstart is None:
-                continue
-
-            start_dt = dtstart.dt
-            end_dt = dtend.dt if dtend else None
-
-            all_day = isinstance(start_dt, dt_module.date) and not isinstance(start_dt, dt_module.datetime)
-
-            if all_day:
-                start_dt = datetime(start_dt.year, start_dt.month, start_dt.day, tzinfo=timezone.utc)
-                if end_dt and isinstance(end_dt, dt_module.date) and not isinstance(end_dt, dt_module.datetime):
-                    end_dt = datetime(end_dt.year, end_dt.month, end_dt.day, tzinfo=timezone.utc)
-            else:
-                if isinstance(start_dt, dt_module.datetime) and start_dt.tzinfo is None:
-                    start_dt = start_dt.replace(tzinfo=timezone.utc)
-                if end_dt and isinstance(end_dt, dt_module.datetime) and end_dt.tzinfo is None:
-                    end_dt = end_dt.replace(tzinfo=timezone.utc)
-
-            existing = db.query(models.Event).filter(
-                models.Event.ical_uid == uid,
-                models.Event.source == "ical",
-            ).first()
-
-            if existing:
-                existing.title = summary
-                existing.description = description
-                existing.location = location
-                existing.start = start_dt
-                existing.end = end_dt
-                existing.all_day = all_day
-                existing.calendar_list_id = feed.calendar_list_id
-            else:
-                db.add(models.Event(
-                    title=summary,
-                    description=description,
-                    location=location,
-                    start=start_dt,
-                    end=end_dt,
-                    all_day=all_day,
-                    source="ical",
-                    ical_uid=uid,
-                    calendar_list_id=feed.calendar_list_id,
-                ))
+        feed_type = getattr(feed, "feed_type", "ical") or "ical"
+        if feed_type == "caldav":
+            _sync_caldav(db, feed)
+        else:
+            _sync_ical(db, feed)
 
         feed.last_synced = datetime.now(timezone.utc)
         db.commit()
     except Exception as e:
-        print(f"ICAL sync failed for feed {feed.id}: {e}")
+        print(f"Feed sync failed for feed {feed.id}: {e}")
         db.rollback()
 
 

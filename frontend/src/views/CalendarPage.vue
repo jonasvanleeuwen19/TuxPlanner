@@ -32,7 +32,7 @@
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
           <CalendarView
             :events="visibleCalendarEvents"
-            @event-click="openEditEvent"
+            @event-click="openEventInfo"
             @date-click="openAddEvent"
             @dates-set="fetchEventsForRange"
           />
@@ -40,6 +40,14 @@
       </div>
     </div>
 
+    <!-- Event Info Modal (shown on event click) -->
+    <EventInfoModal
+      v-model="infoModal.open"
+      :event="infoModal.event"
+      @edit="openEditFromInfo"
+    />
+
+    <!-- Event Edit/Create Dialog -->
     <EventDialog
       v-model="eventDialog.open"
       :event="eventDialog.event"
@@ -54,6 +62,7 @@
 import { ref, computed, onMounted } from 'vue'
 import CalendarView from '../components/CalendarView.vue'
 import EventDialog from '../components/EventDialog.vue'
+import EventInfoModal from '../components/EventInfoModal.vue'
 import CalendarListPanel from '../components/CalendarListPanel.vue'
 import { eventsApi, calendarListsApi, todosApi } from '../api/index.js'
 
@@ -173,6 +182,9 @@ async function fetchEventsForRange({ start, end }) {
   }
 }
 
+// Info modal state
+const infoModal = ref({ open: false, event: null })
+// Edit dialog state
 const eventDialog = ref({ open: false, event: null })
 
 function openAddEvent({ dateStr, allDay }) {
@@ -182,10 +194,16 @@ function openAddEvent({ dateStr, allDay }) {
   }
 }
 
-function openEditEvent({ event }) {
-  // Don't open edit for virtual TODO events
+function openEventInfo({ event }) {
+  // Don't open info for virtual TODO events
   if (event.extendedProps?.source === 'todo') return
-  const raw = event.extendedProps.raw
+  infoModal.value = { open: true, event }
+}
+
+function openEditFromInfo() {
+  if (!infoModal.value.event) return
+  const raw = infoModal.value.event.extendedProps.raw
+  infoModal.value.open = false
   eventDialog.value = { open: true, event: { ...raw } }
 }
 

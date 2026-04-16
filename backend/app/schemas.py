@@ -104,6 +104,7 @@ class TodoBase(BaseModel):
     priority: Optional[str] = "medium"
     due_date: Optional[datetime] = None
     todo_list_id: Optional[int] = None
+    category: str = "Default"
 
 
 class TodoCreate(TodoBase):
@@ -117,6 +118,7 @@ class TodoUpdate(BaseModel):
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
     todo_list_id: Optional[int] = None
+    category: Optional[str] = None
 
 
 class TodoResponse(TodoBase):
@@ -133,6 +135,9 @@ class IcalFeedBase(BaseModel):
     name: str
     url: str
     is_active: bool = True
+    feed_type: str = "ical"
+    caldav_username: Optional[str] = None
+    caldav_password: Optional[str] = None
 
 
 class IcalFeedCreate(IcalFeedBase):
@@ -143,6 +148,9 @@ class IcalFeedUpdate(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
     is_active: Optional[bool] = None
+    feed_type: Optional[str] = None
+    caldav_username: Optional[str] = None
+    caldav_password: Optional[str] = None
 
 
 class IcalFeedResponse(IcalFeedBase):

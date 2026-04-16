@@ -59,67 +59,82 @@
           <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Create your first task to get started</p>
         </div>
 
-        <!-- Tasks grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- Category columns (horizontal scroll) -->
+        <div v-else class="flex gap-4 overflow-x-auto pb-2" style="min-height: 200px;">
           <div
-            v-for="todo in filteredTodos"
-            :key="todo.id"
-            :class="[
-              'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md',
-              todo.completed ? 'opacity-60' : ''
-            ]"
+            v-for="category in categoryColumns"
+            :key="category"
+            class="flex-shrink-0 w-72"
           >
-            <div class="flex items-start gap-3">
-              <input
-                type="checkbox"
-                :checked="todo.completed"
-                class="mt-1 w-4 h-4 rounded accent-blue-500 cursor-pointer shrink-0"
-                @change="toggleTodo(todo)"
-              />
-              <div class="flex-1 min-w-0">
-                <p
-                  :class="[
-                    'text-sm font-medium',
-                    todo.completed ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'
-                  ]"
-                >
-                  {{ todo.title }}
-                </p>
-                <p v-if="todo.description" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                  {{ todo.description }}
-                </p>
-                <div class="flex items-center gap-2 mt-2 flex-wrap">
-                  <span
-                    v-if="todo.priority"
-                    :class="['text-xs px-2 py-0.5 rounded-md font-medium', priorityClass(todo.priority)]"
+            <!-- Column header -->
+            <div class="flex items-center mb-3 px-1">
+              <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ category }}</span>
+              <span class="ml-2 text-xs px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                {{ getTodosForCategory(category).length }}
+              </span>
+            </div>
+            <!-- Task cards in column -->
+            <div class="flex flex-col gap-2">
+              <div
+                v-for="todo in getTodosForCategory(category)"
+                :key="todo.id"
+                :class="[
+                  'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer',
+                  todo.completed ? 'opacity-60' : ''
+                ]"
+                @click="openTodoInfo(todo)"
+              >
+                <div class="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    :checked="todo.completed"
+                    class="mt-1 w-4 h-4 rounded accent-blue-500 cursor-pointer shrink-0"
+                    @click.stop
+                    @change="toggleTodo(todo)"
+                  />
+                  <div class="flex-1 min-w-0">
+                    <p
+                      :class="[
+                        'text-sm font-medium',
+                        todo.completed ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'
+                      ]"
+                    >
+                      {{ todo.title }}
+                    </p>
+                    <div class="flex items-center gap-2 mt-2 flex-wrap">
+                      <span
+                        v-if="todo.priority"
+                        :class="['text-xs px-2 py-0.5 rounded-md font-medium', priorityClass(todo.priority)]"
+                      >
+                        {{ todo.priority }}
+                      </span>
+                      <span
+                        v-if="todo.due_date"
+                        :class="[
+                          'text-xs px-2 py-0.5 rounded-md font-medium flex items-center gap-1',
+                          isOverdue(todo) ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                        ]"
+                      >
+                        <i class="mdi mdi-clock-outline text-xs" />
+                        {{ formatDateTime(todo.due_date) }}
+                      </span>
+                      <span
+                        v-if="todo.todo_list_id && selectedListId === null"
+                        class="text-xs px-2 py-0.5 rounded-md font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                        :style="{ borderLeft: `3px solid ${getListColor(todo.todo_list_id)}` }"
+                      >
+                        {{ getListName(todo.todo_list_id) }}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    class="shrink-0 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
+                    @click.stop="deleteTodo(todo.id)"
                   >
-                    {{ todo.priority }}
-                  </span>
-                  <span
-                    v-if="todo.due_date"
-                    :class="[
-                      'text-xs px-2 py-0.5 rounded-md font-medium flex items-center gap-1',
-                      isOverdue(todo) ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                    ]"
-                  >
-                    <i class="mdi mdi-clock-outline text-xs" />
-                    {{ formatDateTime(todo.due_date) }}
-                  </span>
-                  <span
-                    v-if="todo.todo_list_id && selectedListId === null"
-                    class="text-xs px-2 py-0.5 rounded-md font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                    :style="{ borderLeft: `3px solid ${getListColor(todo.todo_list_id)}` }"
-                  >
-                    {{ getListName(todo.todo_list_id) }}
-                  </span>
+                    <i class="mdi mdi-trash-can-outline text-base" />
+                  </button>
                 </div>
               </div>
-              <button
-                class="shrink-0 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
-                @click="deleteTodo(todo.id)"
-              >
-                <i class="mdi mdi-trash-can-outline text-base" />
-              </button>
             </div>
           </div>
         </div>
@@ -130,13 +145,151 @@
       v-model="todoDialog"
       :todo-lists="todoLists"
       :default-list-id="selectedListId"
+      :existing-todos="todos"
       @save="createTodo"
     />
+
+    <!-- Edit Todo Dialog -->
+    <TodoDialog
+      v-model="editTodoDialog"
+      :todo-lists="todoLists"
+      :default-list-id="selectedListId"
+      :existing-todos="todos"
+      :edit-todo="editingTodo"
+      @save="updateTodo"
+    />
+
+    <!-- Todo Info Modal -->
+    <Teleport to="body">
+      <div
+        v-if="infoModal.open"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+        @click.self="infoModal.open = false"
+      >
+        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <!-- Header -->
+          <div class="flex items-center p-5 pb-3 shrink-0">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <input
+                type="checkbox"
+                :checked="infoModal.todo?.completed"
+                class="w-4 h-4 accent-blue-500 cursor-pointer shrink-0"
+                @change="toggleTodoFromModal"
+              />
+              <span
+                :class="[
+                  'text-base font-bold truncate',
+                  infoModal.todo?.completed ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'
+                ]"
+              >{{ infoModal.todo?.title }}</span>
+            </div>
+            <div class="flex items-center gap-1 ml-2 shrink-0">
+              <button
+                class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                @click="openEditTodo"
+              >
+                <i class="mdi mdi-pencil-outline" /> Edit
+              </button>
+              <button
+                class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+                @click="infoModal.open = false"
+              >
+                <i class="mdi mdi-close text-lg" />
+              </button>
+            </div>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-700 shrink-0" />
+
+          <!-- Body -->
+          <div class="overflow-y-auto flex-1 p-5 space-y-4">
+            <!-- Meta row -->
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-if="infoModal.todo?.priority"
+                :class="['text-xs px-2 py-0.5 rounded-md font-medium', priorityClass(infoModal.todo.priority)]"
+              >
+                {{ infoModal.todo.priority }}
+              </span>
+              <span
+                v-if="infoModal.todo?.category"
+                class="text-xs px-2 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+              >
+                <i class="mdi mdi-folder-outline text-xs mr-1" />{{ infoModal.todo.category }}
+              </span>
+              <span
+                v-if="infoModal.todo?.due_date"
+                :class="[
+                  'text-xs px-2 py-0.5 rounded-md font-medium flex items-center gap-1',
+                  isOverdue(infoModal.todo) ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                ]"
+              >
+                <i class="mdi mdi-clock-outline text-xs" />
+                Due {{ formatDateTime(infoModal.todo.due_date) }}
+              </span>
+            </div>
+
+            <!-- Created date -->
+            <div v-if="infoModal.todo?.created_at" class="flex items-center gap-2">
+              <i class="mdi mdi-calendar-plus-outline text-sm text-gray-400 dark:text-gray-500" />
+              <span class="text-xs text-gray-500 dark:text-gray-400">Created {{ formatDateTime(infoModal.todo.created_at) }}</span>
+            </div>
+
+            <!-- List -->
+            <div v-if="infoModal.todo?.todo_list_id" class="flex items-center gap-2">
+              <i class="mdi mdi-view-list text-sm text-gray-400 dark:text-gray-500" />
+              <span
+                class="text-xs px-2 py-0.5 rounded-md font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                :style="{ borderLeft: `3px solid ${getListColor(infoModal.todo.todo_list_id)}` }"
+              >
+                {{ getListName(infoModal.todo.todo_list_id) }}
+              </span>
+            </div>
+
+            <!-- Description (rendered markdown) -->
+            <div v-if="infoModal.todo?.description">
+              <div class="flex items-start gap-2">
+                <i class="mdi mdi-text-box-outline text-sm text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
+                <div
+                  class="text-sm text-gray-700 dark:text-gray-300 prose prose-sm max-w-none dark:prose-invert flex-1"
+                  v-html="renderedTodoDescription"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <hr class="border-gray-200 dark:border-gray-700 shrink-0" />
+          <div class="flex items-center gap-2 p-4 shrink-0">
+            <button
+              :class="[
+                'flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                infoModal.todo?.completed
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40'
+              ]"
+              @click="toggleTodoFromModal"
+            >
+              <i :class="['mdi', infoModal.todo?.completed ? 'mdi-undo' : 'mdi-check']" />
+              {{ infoModal.todo?.completed ? 'Mark Incomplete' : 'Complete' }}
+            </button>
+            <div class="flex-1" />
+            <button
+              class="flex items-center gap-1 px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              @click="deleteTodoFromModal"
+            >
+              <i class="mdi mdi-trash-can" /> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import TodoDialog from '../components/TodoDialog.vue'
 import TodoListPanel from '../components/TodoListPanel.vue'
 import { todosApi, todoListsApi } from '../api/index.js'
@@ -145,8 +298,12 @@ const todos = ref([])
 const todoLists = ref([])
 const loading = ref(false)
 const todoDialog = ref(false)
+const editTodoDialog = ref(false)
+const editingTodo = ref(null)
 const filter = ref('all')
 const selectedListId = ref(null)
+
+const infoModal = ref({ open: false, todo: null })
 
 const filterOptions = [
   { value: 'all', label: 'All' },
@@ -175,7 +332,30 @@ const filteredTodos = computed(() => {
   return filteredByList.value
 })
 
+// Unique sorted categories from filtered todos
+const categoryColumns = computed(() => {
+  const cats = new Set()
+  for (const t of filteredTodos.value) {
+    cats.add(t.category || 'Default')
+  }
+  const sorted = [...cats].sort((a, b) => {
+    if (a === 'Default') return -1
+    if (b === 'Default') return 1
+    return a.localeCompare(b)
+  })
+  return sorted
+})
+
+function getTodosForCategory(category) {
+  return filteredTodos.value.filter((t) => (t.category || 'Default') === category)
+}
+
 const pendingCount = computed(() => filteredByList.value.filter((t) => !t.completed).length)
+
+const renderedTodoDescription = computed(() => {
+  if (!infoModal.value.todo?.description) return ''
+  return DOMPurify.sanitize(marked.parse(infoModal.value.todo.description))
+})
 
 async function fetchTodos() {
   loading.value = true
@@ -211,6 +391,23 @@ async function createTodo(todoData) {
   todoDialog.value = false
 }
 
+async function updateTodo(todoData) {
+  if (!editingTodo.value) return
+  try {
+    const { data } = await todosApi.update(editingTodo.value.id, todoData)
+    const idx = todos.value.findIndex((t) => t.id === data.id)
+    if (idx !== -1) todos.value[idx] = data
+    // Update info modal if it's showing this task
+    if (infoModal.value.todo?.id === data.id) {
+      infoModal.value.todo = data
+    }
+  } catch (err) {
+    console.error('Failed to update todo', err)
+  }
+  editTodoDialog.value = false
+  editingTodo.value = null
+}
+
 async function toggleTodo(todo) {
   try {
     const { data } = await todosApi.update(todo.id, { completed: !todo.completed })
@@ -221,6 +418,14 @@ async function toggleTodo(todo) {
   }
 }
 
+async function toggleTodoFromModal() {
+  if (!infoModal.value.todo) return
+  await toggleTodo(infoModal.value.todo)
+  // Update modal reference
+  const updated = todos.value.find((t) => t.id === infoModal.value.todo.id)
+  if (updated) infoModal.value.todo = updated
+}
+
 async function deleteTodo(id) {
   try {
     await todosApi.delete(id)
@@ -228,6 +433,22 @@ async function deleteTodo(id) {
   } catch (err) {
     console.error('Failed to delete todo', err)
   }
+}
+
+async function deleteTodoFromModal() {
+  if (!infoModal.value.todo) return
+  await deleteTodo(infoModal.value.todo.id)
+  infoModal.value.open = false
+}
+
+function openTodoInfo(todo) {
+  infoModal.value = { open: true, todo }
+}
+
+function openEditTodo() {
+  editingTodo.value = { ...infoModal.value.todo }
+  infoModal.value.open = false
+  editTodoDialog.value = true
 }
 
 function selectList(id) {

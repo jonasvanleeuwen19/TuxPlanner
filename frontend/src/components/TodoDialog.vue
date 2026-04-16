@@ -9,9 +9,9 @@
         <!-- Header -->
         <div class="flex items-center p-5 pb-3">
           <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3 shrink-0">
-            <i class="mdi mdi-checkbox-marked-circle-plus-outline text-lg text-blue-500 dark:text-blue-400" />
+            <i :class="['mdi text-lg text-blue-500 dark:text-blue-400', editTodo ? 'mdi-pencil-outline' : 'mdi-checkbox-marked-circle-plus-outline']" />
           </div>
-          <span class="text-base font-bold text-gray-900 dark:text-gray-100">New Task</span>
+          <span class="text-base font-bold text-gray-900 dark:text-gray-100">{{ editTodo ? 'Edit Task' : 'New Task' }}</span>
           <div class="flex-1" />
           <button
             class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
@@ -79,6 +79,25 @@
             </div>
           </div>
 
+          <!-- Category -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
+            <div class="relative">
+              <i class="mdi mdi-folder-outline absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
+              <input
+                v-model="form.category"
+                type="text"
+                list="category-suggestions"
+                placeholder="Default"
+                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+              <datalist id="category-suggestions">
+                <option v-for="cat in existingCategories" :key="cat" :value="cat" />
+              </datalist>
+            </div>
+            <p v-if="categoryError" class="text-xs text-red-500 mt-1">{{ categoryError }}</p>
+          </div>
+
           <!-- Due date -->
           <div>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Due date</label>
@@ -107,7 +126,7 @@
             class="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
             @click="submit"
           >
-            Add Task
+            {{ editTodo ? 'Save Changes' : 'Add Task' }}
           </button>
         </div>
       </div>
@@ -116,18 +135,29 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import MarkdownEditor from './MarkdownEditor.vue'
 
 const props = defineProps({
   modelValue: Boolean,
   todoLists: { type: Array, default: () => [] },
   defaultListId: { type: Number, default: null },
+  existingTodos: { type: Array, default: () => [] },
+  editTodo: { type: Object, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const titleError = ref('')
+const categoryError = ref('')
+
+const existingCategories = computed(() => {
+  const cats = new Set(['Default'])
+  for (const t of props.existingTodos) {
+    if (t.category) cats.add(t.category)
+  }
+  return [...cats].sort()
+})
 
 const defaultForm = () => ({
   title: '',
@@ -135,7 +165,19 @@ const defaultForm = () => ({
   priority: 'medium',
   due_date: '',
   todo_list_id: props.defaultListId ?? null,
+  category: 'Default',
 })
+
+function formFromTodo(todo) {
+  return {
+    title: todo.title || '',
+    description: todo.description || '',
+    priority: todo.priority || 'medium',
+    due_date: todo.due_date ? new Date(todo.due_date).toISOString().slice(0, 16) : '',
+    todo_list_id: todo.todo_list_id ?? null,
+    category: todo.category || 'Default',
+  }
+}
 
 const form = ref(defaultForm())
 
@@ -143,16 +185,31 @@ watch(
   () => props.modelValue,
   (val) => {
     if (val) {
-      form.value = { ...defaultForm(), todo_list_id: props.defaultListId ?? null }
+      form.value = props.editTodo ? formFromTodo(props.editTodo) : { ...defaultForm(), todo_list_id: props.defaultListId ?? null }
       titleError.value = ''
+      categoryError.value = ''
+    }
+  }
+)
+
+watch(
+  () => props.editTodo,
+  (todo) => {
+    if (todo && props.modelValue) {
+      form.value = formFromTodo(todo)
     }
   }
 )
 
 function submit() {
   titleError.value = ''
+  categoryError.value = ''
   if (!form.value.title.trim()) {
     titleError.value = 'Title is required'
+    return
+  }
+  if (!form.value.category.trim()) {
+    categoryError.value = 'Category is required'
     return
   }
   emit('save', {
@@ -161,6 +218,7 @@ function submit() {
     priority: form.value.priority,
     due_date: form.value.due_date ? new Date(form.value.due_date).toISOString() : null,
     todo_list_id: form.value.todo_list_id ?? null,
+    category: form.value.category.trim() || 'Default',
   })
 }
 </script>
