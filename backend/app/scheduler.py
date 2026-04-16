@@ -95,6 +95,7 @@ def _sync_feed(db: Session, feed: models.IcalFeed):
                 existing.start = start_dt
                 existing.end = end_dt
                 existing.all_day = all_day
+                existing.calendar_list_id = feed.calendar_list_id
             else:
                 db.add(models.Event(
                     title=summary,
@@ -105,6 +106,7 @@ def _sync_feed(db: Session, feed: models.IcalFeed):
                     all_day=all_day,
                     source="ical",
                     ical_uid=uid,
+                    calendar_list_id=feed.calendar_list_id,
                 ))
 
         feed.last_synced = datetime.now(timezone.utc)

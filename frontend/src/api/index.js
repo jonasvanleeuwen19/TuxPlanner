@@ -30,4 +30,26 @@ export const icalApi = {
   sync: (id) => api.post(`/ical-feeds/${id}/sync`),
 }
 
+export const calendarListsApi = {
+  list: () => api.get('/calendar-lists/'),
+  get: (id) => api.get(`/calendar-lists/${id}`),
+  create: (data) => api.post('/calendar-lists/', data),
+  update: (id, data) => api.put(`/calendar-lists/${id}`, data),
+  delete: (id) => api.delete(`/calendar-lists/${id}`),
+}
+
+export const subtaskCategoriesApi = {
+  list: () => api.get('/subtask-categories/'),
+  create: (data) => api.post('/subtask-categories/', data),
+  update: (id, data) => api.put(`/subtask-categories/${id}`, data),
+  delete: (id) => api.delete(`/subtask-categories/${id}`),
+}
+
+export const subtasksApi = {
+  list: (eventId) => api.get(`/events/${eventId}/subtasks/`),
+  create: (eventId, data) => api.post(`/events/${eventId}/subtasks/`, data),
+  update: (eventId, subtaskId, data) => api.put(`/events/${eventId}/subtasks/${subtaskId}`, data),
+  delete: (eventId, subtaskId) => api.delete(`/events/${eventId}/subtasks/${subtaskId}`),
+}
+
 export default api
