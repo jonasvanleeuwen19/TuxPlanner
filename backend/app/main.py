@@ -33,6 +33,7 @@ def run_migrations():
         "UPDATE ical_feeds SET feed_type = 'ical' WHERE feed_type IS NULL",
         "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS caldav_username VARCHAR(255)",
         "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS caldav_password TEXT",
+        "ALTER TABLE todos ADD COLUMN IF NOT EXISTS event_id INTEGER",
     ]
     with engine.begin() as conn:
         for stmt in migrations:

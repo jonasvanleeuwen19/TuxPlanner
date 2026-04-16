@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -67,7 +67,7 @@ class EventResponse(EventBase):
     ical_uid: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    subtask_category_names: List[str] = []
+    task_count: int = 0
 
     class Config:
         from_attributes = True
@@ -105,6 +105,7 @@ class TodoBase(BaseModel):
     due_date: Optional[datetime] = None
     todo_list_id: Optional[int] = None
     category: str = "Default"
+    event_id: Optional[int] = None
 
 
 class TodoCreate(TodoBase):
@@ -119,6 +120,7 @@ class TodoUpdate(BaseModel):
     due_date: Optional[datetime] = None
     todo_list_id: Optional[int] = None
     category: Optional[str] = None
+    event_id: Optional[int] = None
 
 
 class TodoResponse(TodoBase):

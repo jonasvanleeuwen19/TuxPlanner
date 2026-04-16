@@ -10,48 +10,36 @@ router = APIRouter(prefix="/events", tags=["events"])
 
 
 def _enrich_event(event: models.Event, db: Session) -> schemas.EventResponse:
-    """Build an EventResponse, adding subtask_category_names."""
-    subtasks = (
-        db.query(models.Subtask)
-        .filter(models.Subtask.event_id == event.id)
-        .all()
+    """Build an EventResponse, adding task_count (linked todos)."""
+    task_count = (
+        db.query(models.Todo)
+        .filter(models.Todo.event_id == event.id)
+        .count()
     )
-    cat_ids = {s.category_id for s in subtasks if s.category_id}
-    cat_names: List[str] = []
-    if cat_ids:
-        cats = db.query(models.SubtaskCategory).filter(models.SubtaskCategory.id.in_(cat_ids)).all()
-        cat_names = sorted({c.name for c in cats})
     data = schemas.EventResponse.model_validate(event)
-    data.subtask_category_names = cat_names
+    data.task_count = task_count
     return data
 
 
 def _enrich_events(events: list, db: Session) -> List[schemas.EventResponse]:
-    """Batch-enrich a list of events with subtask category names."""
+    """Batch-enrich a list of events with task_count (linked todos)."""
     if not events:
         return []
     event_ids = [e.id for e in events]
-    subtasks = (
-        db.query(models.Subtask)
-        .filter(models.Subtask.event_id.in_(event_ids))
+    todos = (
+        db.query(models.Todo.event_id)
+        .filter(models.Todo.event_id.in_(event_ids))
         .all()
     )
-    # Build mapping: event_id -> set of category_ids
-    event_cats: dict = {e.id: set() for e in events}
-    cat_ids_needed: set = set()
-    for s in subtasks:
-        if s.category_id:
-            event_cats[s.event_id].add(s.category_id)
-            cat_ids_needed.add(s.category_id)
-    # Fetch all needed categories
-    cat_map: dict = {}
-    if cat_ids_needed:
-        cats = db.query(models.SubtaskCategory).filter(models.SubtaskCategory.id.in_(cat_ids_needed)).all()
-        cat_map = {c.id: c.name for c in cats}
+    # Build mapping: event_id -> count
+    count_map: dict = {e.id: 0 for e in events}
+    for (eid,) in todos:
+        if eid in count_map:
+            count_map[eid] += 1
     results = []
     for event in events:
         data = schemas.EventResponse.model_validate(event)
-        data.subtask_category_names = sorted({cat_map[cid] for cid in event_cats[event.id] if cid in cat_map})
+        data.task_count = count_map.get(event.id, 0)
         results.append(data)
     return results
 
