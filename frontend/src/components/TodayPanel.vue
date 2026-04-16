@@ -64,7 +64,7 @@ const dayOfYear = computed(() => {
 
 .today-date {
   border-radius: 16px;
-  background: rgba(99, 102, 241, 0.06);
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 
 .letter-spacing-wide {

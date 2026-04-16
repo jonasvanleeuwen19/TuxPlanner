@@ -136,7 +136,7 @@
               prepend-inner-icon="mdi-link"
               variant="outlined"
               density="comfortable"
-              :rules="[v => !!v || 'URL is required', v => v.startsWith('http') || 'Must be a valid URL']"
+              :rules="[v => !!v || 'URL is required', v => /^(https?|webcals?):\/\//.test(v) || 'Must be a valid URL']"
               hint="Paste your calendar's .ics subscribe link"
               persistent-hint
             />
@@ -272,7 +272,7 @@ onMounted(fetchFeeds)
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(var(--v-theme-primary), 0.1);
   display: flex;
   align-items: center;
   justify-content: center;

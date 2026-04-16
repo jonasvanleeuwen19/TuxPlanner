@@ -38,8 +38,13 @@ def _str_or_none(value):
 
 def _sync_feed(db: Session, feed: models.IcalFeed):
     try:
+        url = feed.url
+        if url.startswith("webcal://"):
+            url = "https://" + url[len("webcal://"):]
+        elif url.startswith("webcals://"):
+            url = "https://" + url[len("webcals://"):]
         with httpx.Client(follow_redirects=True, timeout=30) as client:
-            response = client.get(feed.url)
+            response = client.get(url)
             response.raise_for_status()
 
         cal = Calendar.from_ical(response.content)
