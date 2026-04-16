@@ -15,7 +15,7 @@
           <span class="text-base font-bold text-gray-900 dark:text-gray-100 flex-1 min-w-0 truncate">{{ event.title }}</span>
           <div class="flex items-center gap-1 ml-2 shrink-0">
             <button
-              v-if="!isIcalEvent"
+              v-if="!isIcalEvent && !isTaskSession"
               class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
               @click="$emit('edit')"
             >
@@ -39,6 +39,14 @@
             class="flex items-center gap-1 px-2 py-0.5 w-fit text-xs rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
           >
             <i class="mdi mdi-calendar-sync-outline" /> iCal event
+          </div>
+
+          <!-- Task Session badge -->
+          <div
+            v-if="isTaskSession"
+            class="flex items-center gap-1 px-2 py-0.5 w-fit text-xs rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+          >
+            <i class="mdi mdi-calendar-clock" /> Planned task session
           </div>
 
           <!-- Date/time -->
@@ -68,6 +76,7 @@
           </div>
 
           <!-- Tasks section -->
+          <template v-if="!isTaskSession">
           <hr class="border-gray-200 dark:border-gray-700" />
           <div class="flex items-center">
             <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">Tasks</span>
@@ -124,6 +133,7 @@
             </div>
             <p v-if="linkedTasks.length === 0" class="text-sm text-gray-400 dark:text-gray-500 py-1">No tasks yet.</p>
           </div>
+          </template>
         </div>
       </div>
     </div>
@@ -158,6 +168,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'edit', 'tasks-updated'])
 
 const isIcalEvent = computed(() => props.event?.extendedProps?.source === 'ical')
+const isTaskSession = computed(() => props.event?.extendedProps?.source === 'task_session')
 
 const eventDescription = computed(() => props.event?.extendedProps?.description || '')
 const eventLocation = computed(() => props.event?.extendedProps?.location || '')

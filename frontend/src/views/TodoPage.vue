@@ -128,6 +128,12 @@
                       >
                         <i class="mdi mdi-calendar-outline text-xs" />{{ getEventTitle(todo.event_id) }}
                       </span>
+                      <span
+                        v-if="(todo.session_count || 0) > 0"
+                        class="text-xs px-2 py-0.5 rounded-md font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center gap-1"
+                      >
+                        <i class="mdi mdi-calendar-clock text-xs" />{{ todo.session_count }} session{{ todo.session_count === 1 ? '' : 's' }}
+                      </span>
                     </div>
                   </div>
                   <button
@@ -162,6 +168,13 @@
       :edit-todo="editingTodo"
       :events="events"
       @save="updateTodo"
+    />
+
+    <!-- Task Session Dialog -->
+    <TaskSessionDialog
+      v-model="sessionDialog"
+      :edit-session="editingSession"
+      @save="saveSession"
     />
 
     <!-- Todo Info Modal -->
@@ -268,6 +281,61 @@
                 />
               </div>
             </div>
+
+            <!-- Work Sessions section -->
+            <hr class="border-gray-200 dark:border-gray-700" />
+            <div class="flex items-center">
+              <i class="mdi mdi-calendar-clock text-sm text-gray-400 dark:text-gray-500 mr-2" />
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">Work Sessions</span>
+              <div class="flex-1" />
+              <button
+                class="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                @click="openAddSession"
+              >
+                <i class="mdi mdi-plus text-sm" /> Plan Session
+              </button>
+            </div>
+
+            <div v-if="sessionsLoading" class="flex justify-center py-3">
+              <i class="mdi mdi-loading animate-spin text-2xl text-purple-500" />
+            </div>
+            <div v-else class="space-y-1">
+              <div
+                v-for="session in sessions"
+                :key="session.id"
+                class="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 rounded-lg p-2.5"
+              >
+                <div class="flex items-start gap-2">
+                  <i class="mdi mdi-calendar-clock text-sm text-purple-400 dark:text-purple-500 mt-0.5 shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-gray-800 dark:text-gray-200">
+                      {{ formatSessionTime(session.start) }}
+                      <span v-if="session.end" class="text-gray-500 dark:text-gray-400 font-normal">
+                        → {{ formatSessionTime(session.end) }}
+                      </span>
+                    </p>
+                    <p v-if="session.note" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ session.note }}</p>
+                  </div>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <button
+                      class="p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-400 dark:text-purple-500 transition-colors"
+                      @click="openEditSession(session)"
+                    >
+                      <i class="mdi mdi-pencil-outline text-xs" />
+                    </button>
+                    <button
+                      class="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
+                      @click="deleteSession(session)"
+                    >
+                      <i class="mdi mdi-close text-xs" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p v-if="sessions.length === 0" class="text-xs text-gray-400 dark:text-gray-500 py-1">
+                No sessions planned yet. Click "Plan Session" to schedule work time.
+              </p>
+            </div>
           </div>
 
           <!-- Footer -->
@@ -305,7 +373,8 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import TodoDialog from '../components/TodoDialog.vue'
 import TodoListPanel from '../components/TodoListPanel.vue'
-import { todosApi, todoListsApi, eventsApi } from '../api/index.js'
+import TaskSessionDialog from '../components/TaskSessionDialog.vue'
+import { todosApi, todoListsApi, eventsApi, taskSessionsApi } from '../api/index.js'
 
 const todos = ref([])
 const todoLists = ref([])
@@ -320,10 +389,18 @@ const hiddenColumns = ref(new Set())
 
 const infoModal = ref({ open: false, todo: null })
 
+// Work sessions
+const sessions = ref([])
+const sessionsLoading = ref(false)
+const sessionDialog = ref(false)
+const editingSession = ref(null)
+
 const filterOptions = [
   { value: 'all', label: 'All' },
   { value: 'pending', label: 'Active' },
   { value: 'completed', label: 'Done' },
+  { value: 'planned', label: 'Planned' },
+  { value: 'unplanned', label: 'Unplanned' },
 ]
 
 const listMap = computed(() => {
@@ -345,6 +422,8 @@ const filteredByList = computed(() =>
 const filteredTodos = computed(() => {
   if (filter.value === 'pending') return filteredByList.value.filter((t) => !t.completed)
   if (filter.value === 'completed') return filteredByList.value.filter((t) => t.completed)
+  if (filter.value === 'planned') return filteredByList.value.filter((t) => (t.session_count || 0) > 0)
+  if (filter.value === 'unplanned') return filteredByList.value.filter((t) => (t.session_count || 0) === 0)
   return filteredByList.value
 })
 
@@ -462,12 +541,81 @@ async function deleteTodoFromModal() {
 
 function openTodoInfo(todo) {
   infoModal.value = { open: true, todo }
+  fetchSessions(todo.id)
 }
 
 function openEditTodo() {
   editingTodo.value = { ...infoModal.value.todo }
   infoModal.value.open = false
   editTodoDialog.value = true
+}
+
+async function fetchSessions(todoId) {
+  sessionsLoading.value = true
+  try {
+    const { data } = await taskSessionsApi.list(todoId)
+    sessions.value = data
+  } catch (err) {
+    console.error('Failed to fetch sessions', err)
+  } finally {
+    sessionsLoading.value = false
+  }
+}
+
+function openAddSession() {
+  editingSession.value = null
+  sessionDialog.value = true
+}
+
+function openEditSession(session) {
+  editingSession.value = { ...session }
+  sessionDialog.value = true
+}
+
+async function saveSession(sessionData) {
+  if (!infoModal.value.todo) return
+  try {
+    if (editingSession.value) {
+      const { data } = await taskSessionsApi.update(infoModal.value.todo.id, editingSession.value.id, sessionData)
+      const idx = sessions.value.findIndex((s) => s.id === data.id)
+      if (idx !== -1) sessions.value[idx] = data
+    } else {
+      const { data } = await taskSessionsApi.create(infoModal.value.todo.id, sessionData)
+      sessions.value.push(data)
+    }
+    await refreshTodo(infoModal.value.todo.id)
+  } catch (err) {
+    console.error('Failed to save session', err)
+  }
+  sessionDialog.value = false
+  editingSession.value = null
+}
+
+async function deleteSession(session) {
+  if (!infoModal.value.todo) return
+  try {
+    await taskSessionsApi.delete(infoModal.value.todo.id, session.id)
+    sessions.value = sessions.value.filter((s) => s.id !== session.id)
+    await refreshTodo(infoModal.value.todo.id)
+  } catch (err) {
+    console.error('Failed to delete session', err)
+  }
+}
+
+async function refreshTodo(id) {
+  try {
+    const { data } = await todosApi.get(id)
+    const idx = todos.value.findIndex((t) => t.id === id)
+    if (idx !== -1) todos.value[idx] = data
+    if (infoModal.value.todo?.id === id) infoModal.value.todo = data
+  } catch (err) {
+    console.error('Failed to refresh todo', err)
+  }
+}
+
+function formatSessionTime(dateStr) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function selectList(id) {

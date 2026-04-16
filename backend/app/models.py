@@ -94,3 +94,16 @@ class Subtask(Base):
     description = Column(Text, nullable=True)
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class TaskSession(Base):
+    __tablename__ = "task_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    todo_id = Column(Integer, ForeignKey("todos.id", ondelete="CASCADE"), nullable=False)
+    # event_id points to the auto-created calendar event for this session; SET NULL on event deletion
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    start = Column(DateTime(timezone=True), nullable=False)
+    end = Column(DateTime(timezone=True), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

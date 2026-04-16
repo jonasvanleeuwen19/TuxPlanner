@@ -60,4 +60,11 @@ export const subtasksApi = {
   delete: (eventId, subtaskId) => api.delete(`/events/${eventId}/subtasks/${subtaskId}`),
 }
 
+export const taskSessionsApi = {
+  list: (todoId) => api.get(`/todos/${todoId}/sessions/`),
+  create: (todoId, data) => api.post(`/todos/${todoId}/sessions/`, data),
+  update: (todoId, sessionId, data) => api.put(`/todos/${todoId}/sessions/${sessionId}`, data),
+  delete: (todoId, sessionId) => api.delete(`/todos/${todoId}/sessions/${sessionId}`),
+}
+
 export default api

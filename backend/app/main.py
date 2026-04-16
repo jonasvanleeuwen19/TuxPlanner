@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from app.database import Base, engine
 from app.routers import events, todos
-from app.routers import ical_feeds, calendar_lists, subtask_categories, subtasks, todo_lists
+from app.routers import ical_feeds, calendar_lists, subtask_categories, subtasks, todo_lists, task_sessions
 from app.scheduler import start_scheduler, stop_scheduler
 
 Base.metadata.create_all(bind=engine)
@@ -34,6 +34,16 @@ def run_migrations():
         "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS caldav_username VARCHAR(255)",
         "ALTER TABLE ical_feeds ADD COLUMN IF NOT EXISTS caldav_password TEXT",
         "ALTER TABLE todos ADD COLUMN IF NOT EXISTS event_id INTEGER",
+        # Task sessions
+        """CREATE TABLE IF NOT EXISTS task_sessions (
+            id SERIAL PRIMARY KEY,
+            todo_id INTEGER NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
+            event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+            start TIMESTAMP WITH TIME ZONE NOT NULL,
+            "end" TIMESTAMP WITH TIME ZONE,
+            note TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
     ]
     with engine.begin() as conn:
         for stmt in migrations:
@@ -72,6 +82,7 @@ app.include_router(calendar_lists.router, prefix="/api")
 app.include_router(subtask_categories.router, prefix="/api")
 app.include_router(subtasks.router, prefix="/api")
 app.include_router(todo_lists.router, prefix="/api")
+app.include_router(task_sessions.router, prefix="/api")
 
 
 @app.get("/")

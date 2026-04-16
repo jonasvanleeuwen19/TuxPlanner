@@ -126,6 +126,7 @@ class TodoUpdate(BaseModel):
 class TodoResponse(TodoBase):
     id: int
     completed: bool
+    session_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -212,6 +213,35 @@ class SubtaskUpdate(BaseModel):
 class SubtaskResponse(SubtaskBase):
     id: int
     event_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Task Session ──────────────────────────────────────────────
+
+
+class TaskSessionBase(BaseModel):
+    start: datetime
+    end: Optional[datetime] = None
+    note: Optional[str] = None
+
+
+class TaskSessionCreate(TaskSessionBase):
+    pass
+
+
+class TaskSessionUpdate(BaseModel):
+    start: Optional[datetime] = None
+    end: Optional[datetime] = None
+    note: Optional[str] = None
+
+
+class TaskSessionResponse(TaskSessionBase):
+    id: int
+    todo_id: int
+    event_id: Optional[int] = None
     created_at: datetime
 
     class Config:
