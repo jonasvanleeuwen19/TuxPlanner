@@ -72,10 +72,9 @@
               <span v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</span>
               {{ ev.title }}
               <span
-                v-for="tag in (ev.extendedProps?.subtask_category_names || [])"
-                :key="tag"
+                v-if="(ev.extendedProps?.task_count || 0) > 0"
                 class="cal-cat-tag"
-              >{{ tag }}</span>
+              >{{ ev.extendedProps.task_count }} task{{ ev.extendedProps.task_count === 1 ? '' : 's' }}</span>
             </div>
             <div v-if="getDayEvents(day.date).length > 3" class="cal-event-more">
               +{{ getDayEvents(day.date).length - 3 }} more
@@ -116,12 +115,8 @@
             >
               <div v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</div>
               {{ ev.title }}
-              <div v-if="(ev.extendedProps?.subtask_category_names || []).length" class="cal-cat-tags">
-                <span
-                  v-for="tag in ev.extendedProps.subtask_category_names"
-                  :key="tag"
-                  class="cal-cat-tag"
-                >{{ tag }}</span>
+              <div v-if="(ev.extendedProps?.task_count || 0) > 0" class="cal-cat-tags">
+                <span class="cal-cat-tag">{{ ev.extendedProps.task_count }} task{{ ev.extendedProps.task_count === 1 ? '' : 's' }}</span>
               </div>
             </div>
             <div v-if="getDayEvents(day.date).length === 0" class="cal-week-empty" @click="onDayClick(day)" />
@@ -151,12 +146,8 @@
             <div class="flex-1 min-w-0">
               <div class="cal-list-title">{{ ev.title }}</div>
               <div class="cal-list-time">{{ ev.allDay ? 'All day' : formatTime(ev.start) }}</div>
-              <div v-if="(ev.extendedProps?.subtask_category_names || []).length" class="cal-cat-tags mt-1">
-                <span
-                  v-for="tag in ev.extendedProps.subtask_category_names"
-                  :key="tag"
-                  class="cal-cat-tag-list"
-                >{{ tag }}</span>
+              <div v-if="(ev.extendedProps?.task_count || 0) > 0" class="cal-cat-tags mt-1">
+                <span class="cal-cat-tag-list">{{ ev.extendedProps.task_count }} task{{ ev.extendedProps.task_count === 1 ? '' : 's' }}</span>
               </div>
             </div>
           </div>

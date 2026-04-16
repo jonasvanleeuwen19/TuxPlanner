@@ -44,7 +44,10 @@
     <EventInfoModal
       v-model="infoModal.open"
       :event="infoModal.event"
+      :events="events"
+      :todo-lists="todoLists"
       @edit="openEditFromInfo"
+      @tasks-updated="handleTasksUpdated"
     />
 
     <!-- Event Edit/Create Dialog -->
@@ -64,7 +67,7 @@ import CalendarView from '../components/CalendarView.vue'
 import EventDialog from '../components/EventDialog.vue'
 import EventInfoModal from '../components/EventInfoModal.vue'
 import CalendarListPanel from '../components/CalendarListPanel.vue'
-import { eventsApi, calendarListsApi, todosApi } from '../api/index.js'
+import { eventsApi, calendarListsApi, todosApi, todoListsApi } from '../api/index.js'
 
 const TODO_LIST_ID = 'todos-virtual'
 const TODO_LIST_COLOR = '#f59e0b'
@@ -72,6 +75,8 @@ const TODO_LIST_COLOR = '#f59e0b'
 const events = ref([])
 const calendarLists = ref([])
 const todos = ref([])
+const todoLists = ref([])
+const currentRange = ref(null)
 
 const todoListVisible = ref(
   localStorage.getItem('todoListVisible') !== 'false'
@@ -102,7 +107,7 @@ const visibleListIds = computed(() => new Set(
   calendarLists.value.filter((l) => l.is_visible).map((l) => l.id)
 ))
 
-// Events from DB with subtask_category_names
+// Events from DB with task_count
 const calendarEvents = computed(() =>
   events.value.map((e) => {
     const list = e.calendar_list_id ? listMap.value[e.calendar_list_id] : null
@@ -120,16 +125,16 @@ const calendarEvents = computed(() =>
         location: e.location,
         source: e.source,
         raw: e,
-        subtask_category_names: e.subtask_category_names || [],
+        task_count: e.task_count || 0,
       },
     }
   })
 )
 
-// Virtual todo events (todos with due_date)
+// Virtual todo events: only todos with due_date and NOT linked to an event
 const todoEvents = computed(() =>
   todos.value
-    .filter((t) => t.due_date)
+    .filter((t) => t.due_date && !t.event_id)
     .map((t) => ({
       id: `todo-${t.id}`,
       title: `✓ ${t.title}`,
@@ -143,7 +148,7 @@ const todoEvents = computed(() =>
         location: null,
         source: 'todo',
         raw: t,
-        subtask_category_names: [],
+        task_count: 0,
       },
     }))
 )
@@ -166,7 +171,17 @@ async function fetchCalendarLists() {
   }
 }
 
+async function fetchTodoLists() {
+  try {
+    const { data } = await todoListsApi.list()
+    todoLists.value = data
+  } catch (err) {
+    console.error('Failed to fetch todo lists', err)
+  }
+}
+
 async function fetchEventsForRange({ start, end }) {
+  currentRange.value = { start, end }
   try {
     const { data } = await eventsApi.list({ start: start.toISOString(), end: end.toISOString() })
     events.value = data
@@ -238,8 +253,15 @@ function handleToggleVirtual() {
   localStorage.setItem('todoListVisible', String(todoListVisible.value))
 }
 
+async function handleTasksUpdated() {
+  // Refresh events to update task_count, and refresh todos
+  if (currentRange.value) {
+    await fetchEventsForRange(currentRange.value)
+  }
+}
+
 onMounted(async () => {
-  await fetchCalendarLists()
+  await Promise.all([fetchCalendarLists(), fetchTodoLists()])
   try {
     const { data } = await todosApi.list()
     todos.value = data

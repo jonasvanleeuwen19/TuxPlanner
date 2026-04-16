@@ -48,6 +48,22 @@
             :rows="3"
           />
 
+          <!-- Link to event -->
+          <div v-if="events && events.length">
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Link to event</label>
+            <div class="relative">
+              <i class="mdi mdi-calendar-link absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
+              <select
+                v-model="form.event_id"
+                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                @change="onEventLinkChange"
+              >
+                <option :value="null">No event</option>
+                <option v-for="ev in events" :key="ev.id" :value="ev.id">{{ ev.title }} ({{ formatEventDate(ev) }})</option>
+              </select>
+            </div>
+          </div>
+
           <!-- List selector -->
           <div v-if="todoLists && todoLists.length">
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">List</label>
@@ -100,13 +116,17 @@
 
           <!-- Due date -->
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Due date</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Due date
+              <span v-if="form.event_id" class="ml-1 text-gray-400 dark:text-gray-500 font-normal">(synced from linked event)</span>
+            </label>
             <div class="relative">
               <i class="mdi mdi-calendar-clock absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
               <input
                 v-model="form.due_date"
                 type="datetime-local"
-                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                :disabled="!!form.event_id"
+                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -144,6 +164,8 @@ const props = defineProps({
   defaultListId: { type: Number, default: null },
   existingTodos: { type: Array, default: () => [] },
   editTodo: { type: Object, default: null },
+  events: { type: Array, default: () => [] },
+  linkedEventId: { type: Number, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
@@ -166,6 +188,7 @@ const defaultForm = () => ({
   due_date: '',
   todo_list_id: props.defaultListId ?? null,
   category: 'Default',
+  event_id: props.linkedEventId ?? null,
 })
 
 function formFromTodo(todo) {
@@ -176,16 +199,48 @@ function formFromTodo(todo) {
     due_date: todo.due_date ? new Date(todo.due_date).toISOString().slice(0, 16) : '',
     todo_list_id: todo.todo_list_id ?? null,
     category: todo.category || 'Default',
+    event_id: todo.event_id ?? null,
   }
 }
 
 const form = ref(defaultForm())
 
+function applyEventDueDate(eventId) {
+  if (!eventId) return
+  const ev = props.events.find((e) => e.id === eventId)
+  if (ev) {
+    const dateStr = ev.end || ev.start
+    if (dateStr) {
+      form.value.due_date = new Date(dateStr).toISOString().slice(0, 16)
+    }
+  }
+}
+
+function onEventLinkChange() {
+  if (form.value.event_id) {
+    applyEventDueDate(form.value.event_id)
+  } else {
+    form.value.due_date = ''
+  }
+}
+
+function formatEventDate(ev) {
+  if (!ev?.start) return ''
+  return new Date(ev.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 watch(
   () => props.modelValue,
   (val) => {
     if (val) {
-      form.value = props.editTodo ? formFromTodo(props.editTodo) : { ...defaultForm(), todo_list_id: props.defaultListId ?? null }
+      if (props.editTodo) {
+        form.value = formFromTodo(props.editTodo)
+      } else {
+        form.value = { ...defaultForm(), todo_list_id: props.defaultListId ?? null, event_id: props.linkedEventId ?? null }
+        if (props.linkedEventId) {
+          applyEventDueDate(props.linkedEventId)
+        }
+      }
       titleError.value = ''
       categoryError.value = ''
     }
@@ -197,6 +252,16 @@ watch(
   (todo) => {
     if (todo && props.modelValue) {
       form.value = formFromTodo(todo)
+    }
+  }
+)
+
+watch(
+  () => props.linkedEventId,
+  (id) => {
+    if (props.modelValue && !props.editTodo) {
+      form.value.event_id = id ?? null
+      if (id) applyEventDueDate(id)
     }
   }
 )
@@ -219,6 +284,8 @@ function submit() {
     due_date: form.value.due_date ? new Date(form.value.due_date).toISOString() : null,
     todo_list_id: form.value.todo_list_id ?? null,
     category: form.value.category.trim() || 'Default',
+    event_id: form.value.event_id ?? null,
   })
 }
 </script>
+

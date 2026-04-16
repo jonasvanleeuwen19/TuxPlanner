@@ -44,6 +44,7 @@ class Todo(Base):
     due_date = Column(DateTime(timezone=True), nullable=True)
     todo_list_id = Column(Integer, ForeignKey("todo_lists.id", ondelete="SET NULL"), nullable=True)
     category = Column(String(255), nullable=False, default="Default")
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

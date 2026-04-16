@@ -125,6 +125,12 @@
                       >
                         {{ getListName(todo.todo_list_id) }}
                       </span>
+                      <span
+                        v-if="todo.event_id"
+                        class="text-xs px-2 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                      >
+                        <i class="mdi mdi-calendar-outline text-xs" />{{ getEventTitle(todo.event_id) }}
+                      </span>
                     </div>
                   </div>
                   <button
@@ -146,6 +152,7 @@
       :todo-lists="todoLists"
       :default-list-id="selectedListId"
       :existing-todos="todos"
+      :events="events"
       @save="createTodo"
     />
 
@@ -156,6 +163,7 @@
       :default-list-id="selectedListId"
       :existing-todos="todos"
       :edit-todo="editingTodo"
+      :events="events"
       @save="updateTodo"
     />
 
@@ -234,6 +242,14 @@
               <span class="text-xs text-gray-500 dark:text-gray-400">Created {{ formatDateTime(infoModal.todo.created_at) }}</span>
             </div>
 
+            <!-- Linked event -->
+            <div v-if="infoModal.todo?.event_id" class="flex items-center gap-2">
+              <i class="mdi mdi-calendar-link text-sm text-gray-400 dark:text-gray-500" />
+              <span class="text-xs px-2 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                <i class="mdi mdi-calendar-outline text-xs mr-1" />{{ getEventTitle(infoModal.todo.event_id) }}
+              </span>
+            </div>
+
             <!-- List -->
             <div v-if="infoModal.todo?.todo_list_id" class="flex items-center gap-2">
               <i class="mdi mdi-view-list text-sm text-gray-400 dark:text-gray-500" />
@@ -292,10 +308,11 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import TodoDialog from '../components/TodoDialog.vue'
 import TodoListPanel from '../components/TodoListPanel.vue'
-import { todosApi, todoListsApi } from '../api/index.js'
+import { todosApi, todoListsApi, eventsApi } from '../api/index.js'
 
 const todos = ref([])
 const todoLists = ref([])
+const events = ref([])
 const loading = ref(false)
 const todoDialog = ref(false)
 const editTodoDialog = ref(false)
@@ -319,6 +336,7 @@ const listMap = computed(() => {
 
 function getListColor(id) { return listMap.value[id]?.color || '#3b82f6' }
 function getListName(id) { return listMap.value[id]?.name || '' }
+function getEventTitle(id) { return events.value.find((e) => e.id === id)?.title || `Event #${id}` }
 
 const filteredByList = computed(() =>
   selectedListId.value === null
@@ -480,5 +498,16 @@ function priorityClass(priority) {
 onMounted(async () => {
   await fetchTodoLists()
   await fetchTodos()
+  try {
+    // Fetch upcoming events for task-event linking (past 30 days to 1 year ahead)
+    const start = new Date()
+    start.setDate(start.getDate() - 30)
+    const end = new Date()
+    end.setFullYear(end.getFullYear() + 1)
+    const { data } = await eventsApi.list({ start: start.toISOString(), end: end.toISOString() })
+    events.value = data
+  } catch (err) {
+    console.error('Failed to fetch events', err)
+  }
 })
 </script>

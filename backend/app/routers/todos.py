@@ -10,10 +10,12 @@ router = APIRouter(prefix="/todos", tags=["todos"])
 
 
 @router.get("/", response_model=List[schemas.TodoResponse])
-def list_todos(todo_list_id: Optional[int] = None, db: Session = Depends(get_db)):
+def list_todos(todo_list_id: Optional[int] = None, event_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = db.query(models.Todo)
     if todo_list_id is not None:
         query = query.filter(models.Todo.todo_list_id == todo_list_id)
+    if event_id is not None:
+        query = query.filter(models.Todo.event_id == event_id)
     return query.order_by(models.Todo.created_at.desc()).all()
 
 
