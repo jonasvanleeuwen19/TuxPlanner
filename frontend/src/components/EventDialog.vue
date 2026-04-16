@@ -1,349 +1,333 @@
 <template>
-  <v-dialog :model-value="modelValue" max-width="600" @update:model-value="$emit('update:modelValue', $event)">
-    <v-card rounded="xl" elevation="8">
-      <v-card-title class="d-flex align-center pa-5 pb-3">
-        <div class="event-dialog-icon mr-3">
-          <v-icon :icon="isEdit ? 'mdi-calendar-edit' : 'mdi-calendar-plus'" color="primary" size="22" />
-        </div>
-        <span class="text-h6 font-weight-bold">{{ isEdit ? 'Edit Event' : 'New Event' }}</span>
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" size="small" @click="close" />
-      </v-card-title>
-
-      <v-divider />
-
-      <v-card-text class="pa-5">
-        <v-form ref="formRef" @submit.prevent="submit">
-          <v-text-field
-            v-model="form.title"
-            label="Title"
-            prepend-inner-icon="mdi-format-title"
-            variant="outlined"
-            density="comfortable"
-            :rules="[v => !!v || 'Title is required']"
-            class="mb-3"
-            autofocus
-          />
-
-          <div class="mb-3">
-            <MarkdownEditor
-              v-model="form.description"
-              label="Description"
-              placeholder="Add a description (Markdown supported)…"
-              :rows="3"
-            />
+  <Teleport to="body">
+    <div
+      v-if="modelValue"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      @click.self="close"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center p-5 pb-3 shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3 shrink-0">
+            <i :class="['mdi text-lg text-blue-500 dark:text-blue-400', isEdit ? 'mdi-calendar-edit' : 'mdi-calendar-plus']" />
           </div>
-
-          <v-text-field
-            v-model="form.location"
-            label="Location"
-            prepend-inner-icon="mdi-map-marker-outline"
-            variant="outlined"
-            density="comfortable"
-            class="mb-3"
-          />
-
-          <!-- Calendar List selector — exclude virtual TODO's list -->
-          <v-select
-            v-if="!isIcalEvent"
-            v-model="form.calendar_list_id"
-            :items="writableCalendarListItems"
-            item-title="name"
-            item-value="id"
-            label="Calendar list"
-            prepend-inner-icon="mdi-calendar-multiple"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            class="mb-3"
+          <span class="text-base font-bold text-gray-900 dark:text-gray-100">{{ isEdit ? 'Edit Event' : 'New Event' }}</span>
+          <div class="flex-1" />
+          <button
+            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+            @click="close"
           >
-            <template #item="{ item, props: itemProps }">
-              <v-list-item v-bind="itemProps">
-                <template #prepend>
-                  <div
-                    class="list-color-dot mr-3"
-                    :style="{ backgroundColor: item.raw.color }"
-                  />
-                </template>
-              </v-list-item>
-            </template>
-            <template #selection="{ item }">
-              <div class="d-flex align-center">
-                <div class="list-color-dot mr-2" :style="{ backgroundColor: item.raw.color }" />
-                {{ item.raw.name }}
-              </div>
-            </template>
-          </v-select>
+            <i class="mdi mdi-close text-lg" />
+          </button>
+        </div>
+        <hr class="border-gray-200 dark:border-gray-700 shrink-0" />
 
-          <v-checkbox
-            v-model="form.all_day"
-            label="All day"
-            color="primary"
-            density="compact"
-            class="mb-2"
+        <!-- Scrollable body -->
+        <div class="overflow-y-auto flex-1 p-5 space-y-4">
+          <!-- Title -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+            <div class="relative">
+              <i class="mdi mdi-format-title absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
+              <input
+                v-model="form.title"
+                type="text"
+                autofocus
+                placeholder="Event title"
+                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+            </div>
+            <p v-if="errors.title" class="text-xs text-red-500 mt-1">{{ errors.title }}</p>
+          </div>
+
+          <!-- Description -->
+          <MarkdownEditor
+            v-model="form.description"
+            label="Description"
+            placeholder="Add a description (Markdown supported)…"
+            :rows="3"
           />
 
-          <v-row dense>
-            <v-col :cols="form.all_day ? 12 : 6">
-              <v-text-field
-                v-model="form.start"
-                :label="form.all_day ? 'Date' : 'Start'"
-                prepend-inner-icon="mdi-calendar"
-                variant="outlined"
-                density="comfortable"
-                :type="form.all_day ? 'date' : 'datetime-local'"
-                :rules="[v => !!v || 'Start is required']"
+          <!-- Location -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+            <div class="relative">
+              <i class="mdi mdi-map-marker-outline absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
+              <input
+                v-model="form.location"
+                type="text"
+                placeholder="Location"
+                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               />
-            </v-col>
-            <v-col v-if="!form.all_day" cols="6">
-              <v-text-field
-                v-model="form.end"
-                label="End"
-                prepend-inner-icon="mdi-calendar-end"
-                variant="outlined"
-                density="comfortable"
-                type="datetime-local"
-              />
-            </v-col>
-          </v-row>
-
-          <div v-if="!isIcalEvent" class="d-flex align-center gap-2 mt-2">
-            <span class="text-body-2 text-medium-emphasis mr-2">Color override</span>
-            <div
-              v-for="color in colors"
-              :key="color"
-              class="color-swatch"
-              :style="{ backgroundColor: color }"
-              :class="{ selected: form.color === color }"
-              @click="form.color = form.color === color ? null : color"
-            />
-          </div>
-        </v-form>
-
-        <!-- Subtasks section (only for saved events) -->
-        <template v-if="isEdit">
-          <v-divider class="my-4" />
-          <div class="d-flex align-center mb-3">
-            <span class="text-body-1 font-weight-semibold">Subtasks</span>
-            <v-spacer />
-            <v-btn
-              size="small"
-              variant="tonal"
-              color="primary"
-              prepend-icon="mdi-plus"
-              rounded="lg"
-              @click="openAddSubtask"
-            >
-              Add
-            </v-btn>
-          </div>
-
-          <div v-if="subtasksLoading" class="text-center py-2">
-            <v-progress-circular indeterminate size="20" color="primary" />
-          </div>
-
-          <div v-else>
-            <!-- Group subtasks by category -->
-            <template v-for="(group, catName) in groupedSubtasks" :key="catName">
-              <div class="text-caption text-medium-emphasis font-weight-semibold text-uppercase mb-1 mt-2">
-                {{ catName }}
-              </div>
-              <div
-                v-for="subtask in group"
-                :key="subtask.id"
-                class="subtask-item pa-2 rounded-lg mb-1"
-              >
-                <div class="d-flex align-center">
-                  <v-checkbox
-                    :model-value="subtask.completed"
-                    density="compact"
-                    hide-details
-                    color="primary"
-                    class="flex-shrink-0 mr-1"
-                    style="max-width: 32px"
-                    @update:model-value="toggleSubtask(subtask)"
-                  />
-                  <div class="flex-grow-1 min-w-0">
-                    <span
-                      class="text-body-2"
-                      :class="{ 'text-decoration-line-through text-medium-emphasis': subtask.completed }"
-                    >
-                      {{ subtask.title }}
-                    </span>
-                    <div
-                      v-if="subtask.description"
-                      class="text-caption text-medium-emphasis mt-0.5"
-                      style="white-space: pre-wrap"
-                    >
-                      {{ subtask.description }}
-                    </div>
-                  </div>
-                  <v-btn
-                    :icon="expandedSubtask === subtask.id ? 'mdi-chevron-up' : 'mdi-pencil-outline'"
-                    size="x-small"
-                    variant="text"
-                    class="mr-1"
-                    @click="toggleExpandSubtask(subtask)"
-                  />
-                  <v-btn
-                    icon="mdi-close"
-                    size="x-small"
-                    variant="text"
-                    @click="removeSubtask(subtask)"
-                  />
-                </div>
-                <!-- Inline description editor -->
-                <div v-if="expandedSubtask === subtask.id" class="mt-2">
-                  <MarkdownEditor
-                    v-model="subtask.description"
-                    label="Subtask description"
-                    placeholder="Add subtask notes (Markdown supported)…"
-                    :rows="2"
-                  />
-                  <div class="d-flex gap-2 mt-1">
-                    <v-btn size="x-small" color="primary" variant="tonal" rounded="lg" @click="saveSubtaskDescription(subtask)">Save</v-btn>
-                    <v-btn size="x-small" variant="text" @click="expandedSubtask = null">Cancel</v-btn>
-                  </div>
-                </div>
-              </div>
-            </template>
-
-            <div v-if="subtasks.length === 0" class="text-body-2 text-medium-emphasis py-1">
-              No subtasks yet.
             </div>
           </div>
 
-          <!-- Add subtask inline form -->
-          <div v-if="addingSubtask" class="mt-2">
-            <v-row dense>
-              <v-col cols="12" sm="5">
-                <v-select
-                  v-model="newSubtask.category_id"
-                  :items="categoryItems"
-                  item-title="name"
-                  item-value="id"
-                  label="Category"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </v-col>
-              <v-col cols="12" sm="7">
-                <v-text-field
-                  v-model="newSubtask.title"
-                  label="Subtask title"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  autofocus
-                  @keyup.enter="saveSubtask"
-                />
-              </v-col>
-            </v-row>
-            <div class="mt-2">
+          <!-- Calendar list -->
+          <div v-if="!isIcalEvent">
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Calendar list</label>
+            <div class="relative">
+              <i class="mdi mdi-calendar-multiple absolute left-3 top-2.5 text-gray-400 dark:text-gray-500 text-sm pointer-events-none" />
+              <select
+                v-model="form.calendar_list_id"
+                class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              >
+                <option :value="null">No calendar</option>
+                <option v-for="list in writableCalendarListItems" :key="list.id" :value="list.id">{{ list.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- All day -->
+          <div class="flex items-center gap-2">
+            <input
+              id="all-day-cb"
+              v-model="form.all_day"
+              type="checkbox"
+              class="w-4 h-4 accent-blue-500 cursor-pointer"
+            />
+            <label for="all-day-cb" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">All day</label>
+          </div>
+
+          <!-- Start / End -->
+          <div class="grid gap-3" :class="form.all_day ? 'grid-cols-1' : 'grid-cols-2'">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{{ form.all_day ? 'Date' : 'Start' }} *</label>
+              <input
+                v-model="form.start"
+                :type="form.all_day ? 'date' : 'datetime-local'"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+              <p v-if="errors.start" class="text-xs text-red-500 mt-1">{{ errors.start }}</p>
+            </div>
+            <div v-if="!form.all_day">
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">End</label>
+              <input
+                v-model="form.end"
+                type="datetime-local"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+            </div>
+          </div>
+
+          <!-- Color override -->
+          <div v-if="!isIcalEvent" class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs text-gray-500 dark:text-gray-400 mr-1">Color override</span>
+            <div
+              v-for="color in colors"
+              :key="color"
+              class="w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 shrink-0 border-2"
+              :style="{ backgroundColor: color, borderColor: form.color === color ? 'rgba(0,0,0,0.4)' : 'transparent' }"
+              @click="form.color = form.color === color ? null : color"
+            />
+          </div>
+
+          <!-- Subtasks (edit only) -->
+          <template v-if="isEdit">
+            <hr class="border-gray-200 dark:border-gray-700" />
+            <div class="flex items-center">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">Subtasks</span>
+              <div class="flex-1" />
+              <button
+                class="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                @click="openAddSubtask"
+              >
+                <i class="mdi mdi-plus text-sm" /> Add
+              </button>
+            </div>
+
+            <div v-if="subtasksLoading" class="flex justify-center py-3">
+              <i class="mdi mdi-loading animate-spin text-2xl text-blue-500" />
+            </div>
+
+            <div v-else class="space-y-1">
+              <template v-for="(group, catName) in groupedSubtasks" :key="catName">
+                <div class="text-[0.65rem] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-2 mb-1">{{ catName }}</div>
+                <div
+                  v-for="subtask in group"
+                  :key="subtask.id"
+                  class="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      :checked="subtask.completed"
+                      class="w-4 h-4 accent-blue-500 cursor-pointer shrink-0"
+                      @change="toggleSubtask(subtask)"
+                    />
+                    <div class="flex-1 min-w-0">
+                      <span
+                        class="text-sm"
+                        :class="subtask.completed ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'"
+                      >{{ subtask.title }}</span>
+                      <div v-if="subtask.description && expandedSubtask !== subtask.id" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 whitespace-pre-wrap">{{ subtask.description }}</div>
+                    </div>
+                    <button
+                      class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 dark:text-gray-500 transition-colors shrink-0"
+                      @click="toggleExpandSubtask(subtask)"
+                    >
+                      <i :class="['mdi text-sm', expandedSubtask === subtask.id ? 'mdi-chevron-up' : 'mdi-pencil-outline']" />
+                    </button>
+                    <button
+                      class="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors shrink-0"
+                      @click="removeSubtask(subtask)"
+                    >
+                      <i class="mdi mdi-close text-sm" />
+                    </button>
+                  </div>
+                  <div v-if="expandedSubtask === subtask.id" class="mt-2 space-y-2">
+                    <MarkdownEditor
+                      v-model="subtask.description"
+                      label="Subtask description"
+                      placeholder="Add subtask notes (Markdown supported)…"
+                      :rows="2"
+                    />
+                    <div class="flex gap-2">
+                      <button class="px-3 py-1 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors" @click="saveSubtaskDescription(subtask)">Save</button>
+                      <button class="px-3 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" @click="expandedSubtask = null">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p v-if="subtasks.length === 0" class="text-sm text-gray-400 dark:text-gray-500 py-1">No subtasks yet.</p>
+            </div>
+
+            <!-- Add subtask inline form -->
+            <div v-if="addingSubtask" class="space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                  <select
+                    v-model="newSubtask.category_id"
+                    class="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option :value="null">No category</option>
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                  <input
+                    v-model="newSubtask.title"
+                    type="text"
+                    autofocus
+                    class="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    @keyup.enter="saveSubtask"
+                  />
+                </div>
+              </div>
               <MarkdownEditor
                 v-model="newSubtask.description"
                 label="Subtask description (optional)"
                 placeholder="Add subtask notes (Markdown supported)…"
                 :rows="2"
               />
+              <div class="flex gap-2 items-center">
+                <button class="px-3 py-1 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors" @click="saveSubtask">Save</button>
+                <button class="px-3 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" @click="addingSubtask = false">Cancel</button>
+                <div class="flex-1" />
+                <button
+                  class="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  @click="manageCategoriesDialog = true"
+                >
+                  <i class="mdi mdi-tag-plus-outline" /> Manage categories
+                </button>
+              </div>
             </div>
-            <div class="d-flex gap-2 mt-2">
-              <v-btn size="small" color="primary" variant="tonal" rounded="lg" @click="saveSubtask">Save</v-btn>
-              <v-btn size="small" variant="text" @click="addingSubtask = false">Cancel</v-btn>
-              <v-spacer />
-              <v-btn
-                size="small"
-                variant="text"
-                prepend-icon="mdi-tag-plus-outline"
-                @click="manageCategoriesDialog = true"
-              >
-                Manage categories
-              </v-btn>
-            </div>
+          </template>
+        </div>
+
+        <hr class="border-gray-200 dark:border-gray-700 shrink-0" />
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2 p-4 shrink-0">
+          <button
+            v-if="isEdit && !isIcalEvent"
+            class="flex items-center gap-1 px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            @click="$emit('delete', form.id)"
+          >
+            <i class="mdi mdi-trash-can" /> Delete
+          </button>
+          <div
+            v-if="isIcalEvent"
+            class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+          >
+            <i class="mdi mdi-calendar-sync-outline" /> iCal event
           </div>
-        </template>
-      </v-card-text>
-
-      <v-divider />
-
-      <v-card-actions class="pa-4">
-        <v-btn
-          v-if="isEdit && !isIcalEvent"
-          color="error"
-          variant="text"
-          prepend-icon="mdi-trash-can"
-          @click="$emit('delete', form.id)"
-        >
-          Delete
-        </v-btn>
-        <v-chip
-          v-if="isIcalEvent"
-          color="secondary"
-          variant="tonal"
-          size="small"
-          prepend-icon="mdi-calendar-sync-outline"
-        >
-          iCal event
-        </v-chip>
-        <v-spacer />
-        <v-btn variant="text" @click="close">Cancel</v-btn>
-        <v-btn
-          v-if="!isIcalEvent"
-          color="primary"
-          variant="elevated"
-          rounded="lg"
-          @click="submit"
-        >
-          {{ isEdit ? 'Save' : 'Create' }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+          <div class="flex-1" />
+          <button
+            class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            @click="close"
+          >
+            Cancel
+          </button>
+          <button
+            v-if="!isIcalEvent"
+            class="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+            @click="submit"
+          >
+            {{ isEdit ? 'Save' : 'Create' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 
   <!-- Manage Categories dialog -->
-  <v-dialog v-model="manageCategoriesDialog" max-width="400">
-    <v-card rounded="xl" elevation="8">
-      <v-card-title class="d-flex align-center pa-5 pb-3">
-        <span class="text-h6 font-weight-bold">Subtask Categories</span>
-        <v-spacer />
-        <v-btn icon="mdi-close" variant="text" size="small" @click="manageCategoriesDialog = false" />
-      </v-card-title>
-      <v-divider />
-      <v-card-text class="pa-4">
-        <div
-          v-for="cat in categories"
-          :key="cat.id"
-          class="d-flex align-center pa-2 rounded-lg mb-1 subtask-item"
-        >
-          <v-icon icon="mdi-tag-outline" size="16" class="mr-2 text-medium-emphasis" />
-          <span class="flex-grow-1 text-body-2">{{ cat.name }}</span>
-          <v-btn
-            icon="mdi-trash-can-outline"
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="deleteCategory(cat)"
-          />
+  <Teleport to="body">
+    <div
+      v-if="manageCategoriesDialog"
+      class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60"
+      @click.self="manageCategoriesDialog = false"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
+        <div class="flex items-center p-5 pb-3">
+          <span class="text-base font-bold text-gray-900 dark:text-gray-100">Subtask Categories</span>
+          <div class="flex-1" />
+          <button
+            class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+            @click="manageCategoriesDialog = false"
+          >
+            <i class="mdi mdi-close text-lg" />
+          </button>
         </div>
-        <div v-if="categories.length === 0" class="text-body-2 text-medium-emphasis text-center py-2">
-          No categories yet.
+        <hr class="border-gray-200 dark:border-gray-700" />
+        <div class="p-4 space-y-1 max-h-60 overflow-y-auto">
+          <div
+            v-for="cat in categories"
+            :key="cat.id"
+            class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <i class="mdi mdi-tag-outline text-xs text-gray-400 dark:text-gray-500" />
+            <span class="flex-1 text-sm text-gray-900 dark:text-gray-100">{{ cat.name }}</span>
+            <button
+              class="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
+              @click="deleteCategory(cat)"
+            >
+              <i class="mdi mdi-trash-can-outline text-sm" />
+            </button>
+          </div>
+          <p v-if="categories.length === 0" class="text-sm text-gray-400 dark:text-gray-500 text-center py-2">No categories yet.</p>
         </div>
-        <div class="d-flex gap-2 mt-3">
-          <v-text-field
-            v-model="newCategoryName"
-            label="New category name"
-            variant="outlined"
-            density="compact"
-            hide-details
-            @keyup.enter="addCategory"
-          />
-          <v-btn color="primary" variant="tonal" rounded="lg" @click="addCategory">Add</v-btn>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex gap-2">
+            <input
+              v-model="newCategoryName"
+              type="text"
+              placeholder="New category name"
+              class="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              @keyup.enter="addCategory"
+            />
+            <button
+              class="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              @click="addCategory"
+            >
+              Add
+            </button>
+          </div>
         </div>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -359,8 +343,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save', 'delete'])
 
-const formRef = ref(null)
 const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#0ea5e9']
+
+const errors = ref({})
 
 const defaultForm = () => ({
   id: null,
@@ -379,24 +364,19 @@ const form = ref(defaultForm())
 const isEdit = computed(() => !!form.value.id)
 const isIcalEvent = computed(() => form.value.source === 'ical')
 
-// Filter out the virtual "TODO's" list from calendar list selector
 const writableCalendarListItems = computed(() =>
   props.calendarLists.filter((l) => l.name !== "TODO's")
 )
 
-// Subtasks
 const subtasks = ref([])
 const subtasksLoading = ref(false)
 const addingSubtask = ref(false)
 const newSubtask = ref({ title: '', description: '', category_id: null })
 const expandedSubtask = ref(null)
 
-// Categories
 const categories = ref([])
 const manageCategoriesDialog = ref(false)
 const newCategoryName = ref('')
-
-const categoryItems = computed(() => categories.value)
 
 const groupedSubtasks = computed(() => {
   const groups = {}
@@ -425,12 +405,14 @@ watch(
         source: newEvent.source || null,
         calendar_list_id: newEvent.calendar_list_id || null,
       }
+      errors.value = {}
       if (newEvent.id) {
         await fetchSubtasks(newEvent.id)
       }
     } else {
       form.value = defaultForm()
       subtasks.value = []
+      errors.value = {}
     }
   },
   { immediate: true }
@@ -555,9 +537,15 @@ function formatForInput(dateStr, allDay) {
   return d.toISOString().slice(0, 16)
 }
 
-async function submit() {
-  const { valid } = await formRef.value.validate()
-  if (!valid) return
+function validate() {
+  errors.value = {}
+  if (!form.value.title.trim()) errors.value.title = 'Title is required'
+  if (!form.value.start) errors.value.start = 'Start is required'
+  return Object.keys(errors.value).length === 0
+}
+
+function submit() {
+  if (!validate()) return
   emit('save', {
     ...form.value,
     start: new Date(form.value.start).toISOString(),
@@ -571,57 +559,3 @@ function close() {
   emit('update:modelValue', false)
 }
 </script>
-
-<style scoped>
-.event-dialog-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-primary), 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.color-swatch {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.15s;
-  border: 2px solid transparent;
-  flex-shrink: 0;
-}
-
-.color-swatch:hover {
-  transform: scale(1.2);
-}
-
-.color-swatch.selected {
-  border-color: rgba(0, 0, 0, 0.4);
-  transform: scale(1.15);
-}
-
-.list-color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.subtask-item {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-}
-
-.subtask-item:hover {
-  background: rgba(var(--v-theme-on-surface), 0.06);
-}
-
-.font-weight-semibold {
-  font-weight: 600;
-}
-
-.gap-2 {
-  gap: 8px;
-}
-</style>

@@ -1,19 +1,45 @@
 <template>
   <div class="cal-root">
     <!-- Toolbar -->
-    <div class="d-flex align-center mb-4 flex-wrap gap-2">
-      <div class="d-flex align-center gap-1">
-        <v-btn icon="mdi-chevron-left" variant="text" size="small" @click="prev" />
-        <v-btn variant="tonal" size="small" rounded="lg" class="px-3" @click="goToToday">Today</v-btn>
-        <v-btn icon="mdi-chevron-right" variant="text" size="small" @click="next" />
+    <div class="flex items-center mb-4 flex-wrap gap-2">
+      <div class="flex items-center gap-1">
+        <button
+          class="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          @click="prev"
+        >
+          <i class="mdi mdi-chevron-left text-lg" />
+        </button>
+        <button
+          class="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          @click="goToToday"
+        >
+          Today
+        </button>
+        <button
+          class="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          @click="next"
+        >
+          <i class="mdi mdi-chevron-right text-lg" />
+        </button>
       </div>
-      <span class="text-h6 font-weight-bold ml-1">{{ title }}</span>
-      <v-spacer />
-      <v-btn-toggle v-model="view" mandatory density="compact" rounded="lg" color="primary" variant="outlined">
-        <v-btn value="month" size="small">Month</v-btn>
-        <v-btn value="week" size="small">Week</v-btn>
-        <v-btn value="list" size="small">List</v-btn>
-      </v-btn-toggle>
+      <span class="text-lg font-bold ml-1 text-gray-900 dark:text-gray-100">{{ title }}</span>
+      <div class="flex-1" />
+      <!-- View toggle -->
+      <div class="flex rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
+        <button
+          v-for="opt in viewOptions"
+          :key="opt.value"
+          :class="[
+            'px-3 py-1 text-xs font-medium transition-colors',
+            view === opt.value
+              ? 'bg-blue-500 text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+          ]"
+          @click="view = opt.value"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
     </div>
 
     <!-- Month View -->
@@ -25,8 +51,11 @@
         <div
           v-for="(day, i) in monthDays"
           :key="i"
-          class="cal-day"
-          :class="{ 'cal-day--other': !day.isCurrentMonth, 'cal-day--today': day.isToday }"
+          :class="[
+            'cal-day',
+            !day.isCurrentMonth ? 'opacity-30' : '',
+            day.isToday ? 'cal-day--today' : 'cal-day--normal'
+          ]"
           @click="onDayClick(day)"
         >
           <div class="cal-day-num">
@@ -37,7 +66,7 @@
               v-for="ev in getDayEvents(day.date).slice(0, 3)"
               :key="ev.id"
               class="cal-event"
-              :style="{ backgroundColor: ev.backgroundColor || 'rgb(var(--v-theme-primary))' }"
+              :style="{ backgroundColor: ev.backgroundColor || '#3b82f6' }"
               @click.stop="onEventClick(ev)"
             >
               <span v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</span>
@@ -62,15 +91,17 @@
         <div
           v-for="(day, i) in weekDays"
           :key="i"
-          class="cal-week-col"
-          :class="{ 'cal-week-col--today': day.isToday }"
+          :class="[
+            'cal-week-col',
+            day.isToday ? 'cal-week-col--today' : ''
+          ]"
         >
           <div class="cal-week-header" @click="onDayClick(day)">
-            <div class="text-caption font-weight-semibold text-uppercase text-medium-emphasis">
+            <div class="cal-week-dow">
               {{ DOW_SHORT[day.date.getDay()] }}
             </div>
             <div class="mt-1">
-              <span :class="day.isToday ? 'cal-today-dot cal-today-dot--lg' : 'text-h6 font-weight-bold'">
+              <span :class="day.isToday ? 'cal-today-dot cal-today-dot--lg' : 'cal-week-daynum'">
                 {{ day.date.getDate() }}
               </span>
             </div>
@@ -80,7 +111,7 @@
               v-for="ev in getDayEvents(day.date)"
               :key="ev.id"
               class="cal-event mb-1"
-              :style="{ backgroundColor: ev.backgroundColor || 'rgb(var(--v-theme-primary))' }"
+              :style="{ backgroundColor: ev.backgroundColor || '#3b82f6' }"
               @click.stop="onEventClick(ev)"
             >
               <div v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</div>
@@ -102,31 +133,26 @@
     <!-- List View -->
     <template v-else>
       <div v-if="sortedListEvents.length === 0" class="text-center py-12">
-        <v-icon icon="mdi-calendar-blank-outline" size="52" color="medium-emphasis" class="mb-3" />
-        <div class="text-body-2 text-medium-emphasis">No upcoming events</div>
+        <i class="mdi mdi-calendar-blank-outline text-5xl text-gray-400 dark:text-gray-600 block mb-3" />
+        <div class="text-sm text-gray-500 dark:text-gray-400">No upcoming events</div>
       </div>
       <template v-else>
         <template v-for="(group, dateStr) in groupedListEvents" :key="dateStr">
-          <div class="cal-list-date text-caption font-weight-semibold text-uppercase text-medium-emphasis px-1 pt-3 pb-1">
+          <div class="cal-list-date">
             {{ dateStr }}
           </div>
-          <v-card
+          <div
             v-for="ev in group"
             :key="ev.id"
-            variant="tonal"
-            rounded="lg"
-            class="mb-1"
-            style="cursor: pointer"
+            class="cal-list-card"
             @click="onEventClick(ev)"
           >
-            <v-card-text class="d-flex align-center pa-3 gap-3">
-              <div class="cal-list-dot" :style="{ backgroundColor: ev.backgroundColor || 'rgb(var(--v-theme-primary))' }" />
-              <div>
-                <div class="text-body-2 font-weight-medium">{{ ev.title }}</div>
-                <div class="text-caption text-medium-emphasis">{{ ev.allDay ? 'All day' : formatTime(ev.start) }}</div>
-              </div>
-            </v-card-text>
-          </v-card>
+            <div class="cal-list-dot" :style="{ backgroundColor: ev.backgroundColor || '#3b82f6' }" />
+            <div>
+              <div class="cal-list-title">{{ ev.title }}</div>
+              <div class="cal-list-time">{{ ev.allDay ? 'All day' : formatTime(ev.start) }}</div>
+            </div>
+          </div>
         </template>
       </template>
     </template>
@@ -144,6 +170,11 @@ const emit = defineEmits(['event-click', 'date-click', 'dates-set'])
 
 const DOW_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const viewOptions = [
+  { value: 'month', label: 'Month' },
+  { value: 'week', label: 'Week' },
+  { value: 'list', label: 'List' },
+]
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000
@@ -315,7 +346,10 @@ onMounted(emitDatesSet)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  color: #6b7280;
+}
+:global(.dark) .cal-dow-cell {
+  color: #9ca3af;
 }
 
 /* ── Month grid ─────────────────────────────────────────── */
@@ -331,21 +365,32 @@ onMounted(emitDatesSet)
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid #e5e7eb;
+}
+:global(.dark) .cal-day {
+  border-color: #374151;
 }
 
-.cal-day:hover {
-  background: rgba(var(--v-theme-primary), 0.06);
+.cal-day--normal {
+  background: rgba(249, 250, 251, 0.5);
 }
-
-.cal-day--other {
-  opacity: 0.3;
+.cal-day--normal:hover {
+  background: rgba(239, 246, 255, 0.7);
+}
+:global(.dark) .cal-day--normal {
+  background: rgba(31, 41, 55, 0.3);
+}
+:global(.dark) .cal-day--normal:hover {
+  background: rgba(55, 65, 81, 0.5);
 }
 
 .cal-day--today {
-  background: rgba(var(--v-theme-primary), 0.07) !important;
-  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+  background: rgba(239, 246, 255, 0.8) !important;
+  border-color: #bfdbfe !important;
+}
+:global(.dark) .cal-day--today {
+  background: rgba(30, 58, 138, 0.15) !important;
+  border-color: #1e3a8a !important;
 }
 
 /* ── Day number ─────────────────────────────────────────── */
@@ -355,7 +400,10 @@ onMounted(emitDatesSet)
   padding: 0 2px 3px;
   font-size: 0.82rem;
   font-weight: 500;
-  color: rgba(var(--v-theme-on-surface), 0.8);
+  color: #4b5563;
+}
+:global(.dark) .cal-day-num {
+  color: #9ca3af;
 }
 
 .cal-today-dot {
@@ -365,8 +413,8 @@ onMounted(emitDatesSet)
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
+  background: #3b82f6;
+  color: #ffffff;
   font-weight: 700;
   font-size: 0.82rem;
 }
@@ -411,7 +459,10 @@ onMounted(emitDatesSet)
 .cal-event-more {
   font-size: 0.7rem;
   padding-left: 4px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  color: #6b7280;
+}
+:global(.dark) .cal-event-more {
+  color: #9ca3af;
 }
 
 /* ── Week view ─────────────────────────────────────────── */
@@ -427,21 +478,52 @@ onMounted(emitDatesSet)
   min-width: 80px;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(249, 250, 251, 0.3);
+  border: 1px solid #e5e7eb;
+}
+:global(.dark) .cal-week-col {
+  background: rgba(31, 41, 55, 0.3);
+  border-color: #374151;
 }
 
 .cal-week-col--today {
-  background: rgba(var(--v-theme-primary), 0.06) !important;
-  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+  background: rgba(239, 246, 255, 0.6) !important;
+  border-color: #bfdbfe !important;
+}
+:global(.dark) .cal-week-col--today {
+  background: rgba(30, 58, 138, 0.12) !important;
+  border-color: #1e3a8a !important;
 }
 
 .cal-week-header {
   padding: 10px 8px;
   text-align: center;
   cursor: pointer;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid #e5e7eb;
   user-select: none;
+}
+:global(.dark) .cal-week-header {
+  border-bottom-color: #374151;
+}
+
+.cal-week-dow {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+:global(.dark) .cal-week-dow {
+  color: #9ca3af;
+}
+
+.cal-week-daynum {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+}
+:global(.dark) .cal-week-daynum {
+  color: #f3f4f6;
 }
 
 .cal-week-events {
@@ -478,9 +560,40 @@ onMounted(emitDatesSet)
   margin-left: 2px;
 }
 
+/* ── List view ─────────────────────────────────────────── */
 .cal-list-date {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-top: 4px;
+  color: #6b7280;
+  padding: 12px 4px 4px;
+}
+:global(.dark) .cal-list-date {
+  color: #9ca3af;
+}
+
+.cal-list-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background 0.15s;
+  background: #ffffff;
+}
+.cal-list-card:hover {
+  background: #f9fafb;
+}
+:global(.dark) .cal-list-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+:global(.dark) .cal-list-card:hover {
+  background: #374151;
 }
 
 .cal-list-dot {
@@ -489,4 +602,23 @@ onMounted(emitDatesSet)
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+.cal-list-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+:global(.dark) .cal-list-title {
+  color: #f3f4f6;
+}
+
+.cal-list-time {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+:global(.dark) .cal-list-time {
+  color: #9ca3af;
+}
 </style>
+
+

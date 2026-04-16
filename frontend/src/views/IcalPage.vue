@@ -46,7 +46,7 @@
             <i class="mdi mdi-calendar-sync-outline text-lg" :style="{ color: getListColor(feed) }" />
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold">{{ feed.name }}</p>
+            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ feed.name }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{{ feed.url }}</p>
           </div>
           <span
@@ -54,7 +54,7 @@
               'ml-2 shrink-0 text-xs px-2 py-0.5 rounded-md font-medium',
               feed.is_active
                 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
             ]"
           >
             {{ feed.is_active ? 'Active' : 'Paused' }}
@@ -121,9 +121,9 @@
             <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-gray-700 flex items-center justify-center mr-3">
               <i class="mdi mdi-calendar-plus text-blue-500 dark:text-blue-400" />
             </div>
-            <span class="text-base font-bold">Add ICAL Feed</span>
+            <span class="text-base font-bold text-gray-900 dark:text-gray-100">Add ICAL Feed</span>
             <div class="flex-1" />
-            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="addDialog = false">
+            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" @click="addDialog = false">
               <i class="mdi mdi-close" />
             </button>
           </div>
@@ -137,7 +137,7 @@
                   v-model="newFeed.name"
                   type="text"
                   placeholder="My Calendar"
-                  class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <p v-if="addErrors.name" class="text-xs text-red-500 mt-1">{{ addErrors.name }}</p>
@@ -150,7 +150,7 @@
                   v-model="newFeed.url"
                   type="text"
                   placeholder="https://..."
-                  class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <p v-if="addErrors.url" class="text-xs text-red-500 mt-1">{{ addErrors.url }}</p>
@@ -199,7 +199,7 @@
       >
         <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
           <div class="p-5 pb-3">
-            <h2 class="text-base font-bold">Remove Feed</h2>
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Remove Feed</h2>
           </div>
           <div class="px-5 pb-4 text-sm text-gray-600 dark:text-gray-400">
             Remove <strong class="text-gray-900 dark:text-gray-100">{{ feedToDelete?.name }}</strong>? All imported events from this feed will be deleted.
