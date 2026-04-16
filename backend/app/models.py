@@ -11,7 +11,9 @@ class CalendarList(Base):
     name = Column(String(255), nullable=False)
     color = Column(String(50), nullable=False, default="#3b82f6")
     is_visible = Column(Boolean, default=True)
-    ical_feed_id = Column(Integer, ForeignKey("ical_feeds.id", ondelete="CASCADE"), nullable=True, unique=True)
+    is_auto = Column(Boolean, default=False)
+    ical_feed_id = Column(Integer, ForeignKey("ical_feeds.id", ondelete="CASCADE"), nullable=True)
+    caldav_calendar_name = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

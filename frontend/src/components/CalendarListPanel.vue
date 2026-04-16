@@ -20,13 +20,29 @@
       <span class="text-xs flex-1 truncate">{{ list.name }}</span>
       <div class="flex items-center gap-1">
         <button
-          v-if="!list.is_virtual"
+          v-if="!list.is_virtual && !list.is_auto"
           class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           @click="openEditDialog(list)"
         >
           <i class="mdi mdi-pencil-outline text-xs text-gray-500" />
         </button>
-        <span v-if="list.is_virtual" class="text-xs px-1 text-gray-400 dark:text-gray-500 italic">auto</span>
+        <button
+          v-if="list.is_auto && !list.is_virtual"
+          class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          title="Change color"
+          @click="openEditDialog(list)"
+        >
+          <i class="mdi mdi-palette-outline text-xs text-gray-500" />
+        </button>
+        <button
+          v-if="list.is_virtual"
+          class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          title="Change color"
+          @click="openVirtualColorDialog(list)"
+        >
+          <i class="mdi mdi-palette-outline text-xs text-gray-500" />
+        </button>
+        <span v-if="list.is_virtual || list.is_auto" class="text-xs px-1 text-gray-400 dark:text-gray-500 italic">auto</span>
         <button
           :class="[
             'relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0',
@@ -127,10 +143,11 @@
               <input
                 v-model="editForm.name"
                 type="text"
-                :disabled="!!editForm.ical_feed_id"
+                :disabled="!!editForm.ical_feed_id || editForm.is_auto"
                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <p v-if="editForm.ical_feed_id" class="text-xs text-gray-500 mt-1">Name is managed by ICAL feed</p>
+              <p v-else-if="editForm.is_auto" class="text-xs text-gray-500 mt-1">Name is managed automatically</p>
               <p v-if="editError" class="text-xs text-red-500 mt-1">{{ editError }}</p>
             </div>
             <div>
@@ -149,7 +166,7 @@
           <hr class="border-gray-200 dark:border-gray-800" />
           <div class="flex items-center gap-2 p-4">
             <button
-              v-if="!editForm.ical_feed_id"
+              v-if="!editForm.ical_feed_id && !editForm.is_auto"
               class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
               @click="deleteList"
             >
@@ -174,6 +191,53 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Virtual List Color Dialog -->
+    <Teleport to="body">
+      <div
+        v-if="virtualColorDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="virtualColorDialog = false"
+      >
+        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
+          <div class="flex items-center p-5 pb-3">
+            <span class="text-base font-bold text-gray-900 dark:text-gray-100">Change Color: {{ virtualColorList?.name }}</span>
+            <div class="flex-1" />
+            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" @click="virtualColorDialog = false">
+              <i class="mdi mdi-close" />
+            </button>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-800" />
+          <div class="p-5">
+            <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Color</p>
+            <div class="flex flex-wrap gap-2">
+              <div
+                v-for="color in colorOptions"
+                :key="color"
+                class="w-6 h-6 rounded-full cursor-pointer transition-transform border-2 hover:scale-110 shrink-0"
+                :style="{ backgroundColor: color, borderColor: virtualSelectedColor === color ? 'rgba(0,0,0,0.4)' : 'transparent' }"
+                @click="virtualSelectedColor = color"
+              />
+            </div>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-800" />
+          <div class="flex justify-end gap-2 p-4">
+            <button
+              class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              @click="virtualColorDialog = false"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              @click="saveVirtualColor"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -185,7 +249,7 @@ const props = defineProps({
   calendarLists: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['update', 'toggle-virtual'])
+const emit = defineEmits(['update', 'toggle-virtual', 'edit-virtual'])
 
 const colorOptions = [
   '#3b82f6', '#8b5cf6', '#06b6d4', '#10b981',
@@ -195,12 +259,15 @@ const colorOptions = [
 
 const addDialog = ref(false)
 const editDialog = ref(false)
+const virtualColorDialog = ref(false)
+const virtualColorList = ref(null)
+const virtualSelectedColor = ref('#f59e0b')
 const saving = ref(false)
 const addError = ref('')
 const editError = ref('')
 
 const addForm = ref({ name: '', color: '#3b82f6' })
-const editForm = ref({ id: null, name: '', color: '#3b82f6', ical_feed_id: null })
+const editForm = ref({ id: null, name: '', color: '#3b82f6', ical_feed_id: null, is_auto: false })
 
 function openAddDialog() {
   addForm.value = { name: '', color: '#3b82f6' }
@@ -209,9 +276,20 @@ function openAddDialog() {
 }
 
 function openEditDialog(list) {
-  editForm.value = { id: list.id, name: list.name, color: list.color, ical_feed_id: list.ical_feed_id }
+  editForm.value = { id: list.id, name: list.name, color: list.color, ical_feed_id: list.ical_feed_id, is_auto: list.is_auto }
   editError.value = ''
   editDialog.value = true
+}
+
+function openVirtualColorDialog(list) {
+  virtualColorList.value = list
+  virtualSelectedColor.value = list.color
+  virtualColorDialog.value = true
+}
+
+function saveVirtualColor() {
+  emit('edit-virtual', virtualSelectedColor.value)
+  virtualColorDialog.value = false
 }
 
 async function toggleVisibility(list) {
@@ -240,11 +318,11 @@ async function saveAdd() {
 
 async function saveEdit() {
   editError.value = ''
-  if (!editForm.value.ical_feed_id && !editForm.value.name) { editError.value = 'Name is required'; return }
+  if (!editForm.value.ical_feed_id && !editForm.value.is_auto && !editForm.value.name) { editError.value = 'Name is required'; return }
   saving.value = true
   try {
     const updates = { color: editForm.value.color }
-    if (!editForm.value.ical_feed_id) updates.name = editForm.value.name
+    if (!editForm.value.ical_feed_id && !editForm.value.is_auto) updates.name = editForm.value.name
     await calendarListsApi.update(editForm.value.id, updates)
     editDialog.value = false
     emit('update')

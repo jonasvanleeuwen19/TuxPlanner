@@ -24,8 +24,13 @@ def _get_or_create_planned_tasks_list(db: Session) -> models.CalendarList:
             name=PLANNED_TASKS_LIST_NAME,
             color=PLANNED_TASKS_LIST_COLOR,
             is_visible=True,
+            is_auto=True,
         )
         db.add(cal_list)
+        db.commit()
+        db.refresh(cal_list)
+    elif not cal_list.is_auto:
+        cal_list.is_auto = True
         db.commit()
         db.refresh(cal_list)
     return cal_list
@@ -69,7 +74,7 @@ def create_session(todo_id: int, session_data: schemas.TaskSessionCreate, db: Se
         description=_build_session_event_description(todo, session_data.note),
         start=session_data.start,
         end=session_data.end,
-        all_day=False,
+        all_day=True,
         source="task_session",
         calendar_list_id=cal_list.id,
         color=PLANNED_TASKS_LIST_COLOR,
