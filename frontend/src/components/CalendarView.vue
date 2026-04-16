@@ -42,6 +42,11 @@
             >
               <span v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</span>
               {{ ev.title }}
+              <span
+                v-for="tag in (ev.extendedProps?.subtask_category_names || [])"
+                :key="tag"
+                class="cal-cat-tag"
+              >{{ tag }}</span>
             </div>
             <div v-if="getDayEvents(day.date).length > 3" class="cal-event-more">
               +{{ getDayEvents(day.date).length - 3 }} more
@@ -80,6 +85,13 @@
             >
               <div v-if="!ev.allDay" class="cal-event-time">{{ formatTime(ev.start) }}</div>
               {{ ev.title }}
+              <div v-if="(ev.extendedProps?.subtask_category_names || []).length" class="cal-cat-tags">
+                <span
+                  v-for="tag in ev.extendedProps.subtask_category_names"
+                  :key="tag"
+                  class="cal-cat-tag"
+                >{{ tag }}</span>
+              </div>
             </div>
             <div v-if="getDayEvents(day.date).length === 0" class="cal-week-empty" @click="onDayClick(day)" />
           </div>
@@ -137,8 +149,12 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000
 const LIST_VIEW_RANGE_MS = 60 * DAY_IN_MS
 
-const view = ref('month')
+const view = ref(localStorage.getItem('calendarView') || 'month')
 const currentDate = ref(new Date())
+
+watch(view, (val) => {
+  localStorage.setItem('calendarView', val)
+})
 
 const todayDate = new Date()
 todayDate.setHours(0, 0, 0, 0)
@@ -440,7 +456,28 @@ onMounted(emitDatesSet)
   cursor: pointer;
 }
 
-/* ── List view ─────────────────────────────────────────── */
+/* ── Category tags ─────────────────────────────────────────── */
+.cal-cat-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.cal-cat-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
 .cal-list-date {
   letter-spacing: 0.06em;
   margin-top: 4px;

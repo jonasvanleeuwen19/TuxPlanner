@@ -25,16 +25,14 @@
             autofocus
           />
 
-          <v-textarea
-            v-model="form.description"
-            label="Description"
-            prepend-inner-icon="mdi-text"
-            variant="outlined"
-            density="comfortable"
-            rows="2"
-            auto-grow
-            class="mb-3"
-          />
+          <div class="mb-3">
+            <MarkdownEditor
+              v-model="form.description"
+              label="Description"
+              placeholder="Add a description (Markdown supported)…"
+              :rows="3"
+            />
+          </div>
 
           <v-text-field
             v-model="form.location"
@@ -45,11 +43,11 @@
             class="mb-3"
           />
 
-          <!-- Calendar List selector -->
+          <!-- Calendar List selector — exclude virtual TODO's list -->
           <v-select
             v-if="!isIcalEvent"
             v-model="form.calendar_list_id"
-            :items="calendarListItems"
+            :items="writableCalendarListItems"
             item-title="name"
             item-value="id"
             label="Calendar list"
@@ -153,29 +151,60 @@
               <div
                 v-for="subtask in group"
                 :key="subtask.id"
-                class="subtask-item d-flex align-center pa-2 rounded-lg mb-1"
+                class="subtask-item pa-2 rounded-lg mb-1"
               >
-                <v-checkbox
-                  :model-value="subtask.completed"
-                  density="compact"
-                  hide-details
-                  color="primary"
-                  class="flex-shrink-0 mr-1"
-                  style="max-width: 32px"
-                  @update:model-value="toggleSubtask(subtask)"
-                />
-                <span
-                  class="text-body-2 flex-grow-1"
-                  :class="{ 'text-decoration-line-through text-medium-emphasis': subtask.completed }"
-                >
-                  {{ subtask.title }}
-                </span>
-                <v-btn
-                  icon="mdi-close"
-                  size="x-small"
-                  variant="text"
-                  @click="removeSubtask(subtask)"
-                />
+                <div class="d-flex align-center">
+                  <v-checkbox
+                    :model-value="subtask.completed"
+                    density="compact"
+                    hide-details
+                    color="primary"
+                    class="flex-shrink-0 mr-1"
+                    style="max-width: 32px"
+                    @update:model-value="toggleSubtask(subtask)"
+                  />
+                  <div class="flex-grow-1 min-w-0">
+                    <span
+                      class="text-body-2"
+                      :class="{ 'text-decoration-line-through text-medium-emphasis': subtask.completed }"
+                    >
+                      {{ subtask.title }}
+                    </span>
+                    <div
+                      v-if="subtask.description"
+                      class="text-caption text-medium-emphasis mt-0.5"
+                      style="white-space: pre-wrap"
+                    >
+                      {{ subtask.description }}
+                    </div>
+                  </div>
+                  <v-btn
+                    :icon="expandedSubtask === subtask.id ? 'mdi-chevron-up' : 'mdi-pencil-outline'"
+                    size="x-small"
+                    variant="text"
+                    class="mr-1"
+                    @click="toggleExpandSubtask(subtask)"
+                  />
+                  <v-btn
+                    icon="mdi-close"
+                    size="x-small"
+                    variant="text"
+                    @click="removeSubtask(subtask)"
+                  />
+                </div>
+                <!-- Inline description editor -->
+                <div v-if="expandedSubtask === subtask.id" class="mt-2">
+                  <MarkdownEditor
+                    v-model="subtask.description"
+                    label="Subtask description"
+                    placeholder="Add subtask notes (Markdown supported)…"
+                    :rows="2"
+                  />
+                  <div class="d-flex gap-2 mt-1">
+                    <v-btn size="x-small" color="primary" variant="tonal" rounded="lg" @click="saveSubtaskDescription(subtask)">Save</v-btn>
+                    <v-btn size="x-small" variant="text" @click="expandedSubtask = null">Cancel</v-btn>
+                  </div>
+                </div>
               </div>
             </template>
 
@@ -212,6 +241,14 @@
                 />
               </v-col>
             </v-row>
+            <div class="mt-2">
+              <MarkdownEditor
+                v-model="newSubtask.description"
+                label="Subtask description (optional)"
+                placeholder="Add subtask notes (Markdown supported)…"
+                :rows="2"
+              />
+            </div>
             <div class="d-flex gap-2 mt-2">
               <v-btn size="small" color="primary" variant="tonal" rounded="lg" @click="saveSubtask">Save</v-btn>
               <v-btn size="small" variant="text" @click="addingSubtask = false">Cancel</v-btn>
@@ -312,6 +349,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { subtasksApi, subtaskCategoriesApi } from '../api/index.js'
+import MarkdownEditor from './MarkdownEditor.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -341,13 +379,17 @@ const form = ref(defaultForm())
 const isEdit = computed(() => !!form.value.id)
 const isIcalEvent = computed(() => form.value.source === 'ical')
 
-const calendarListItems = computed(() => props.calendarLists)
+// Filter out the virtual "TODO's" list from calendar list selector
+const writableCalendarListItems = computed(() =>
+  props.calendarLists.filter((l) => l.name !== "TODO's")
+)
 
 // Subtasks
 const subtasks = ref([])
 const subtasksLoading = ref(false)
 const addingSubtask = ref(false)
-const newSubtask = ref({ title: '', category_id: null })
+const newSubtask = ref({ title: '', description: '', category_id: null })
+const expandedSubtask = ref(null)
 
 // Categories
 const categories = ref([])
@@ -401,6 +443,7 @@ watch(
       await fetchCategories()
     } else {
       addingSubtask.value = false
+      expandedSubtask.value = null
     }
   }
 )
@@ -427,16 +470,20 @@ async function fetchCategories() {
 }
 
 function openAddSubtask() {
-  newSubtask.value = { title: '', category_id: null }
+  newSubtask.value = { title: '', description: '', category_id: null }
   addingSubtask.value = true
 }
 
 async function saveSubtask() {
   if (!newSubtask.value.title.trim()) return
   try {
-    const { data } = await subtasksApi.create(form.value.id, newSubtask.value)
+    const { data } = await subtasksApi.create(form.value.id, {
+      title: newSubtask.value.title,
+      description: newSubtask.value.description || null,
+      category_id: newSubtask.value.category_id,
+    })
     subtasks.value.push(data)
-    newSubtask.value = { title: '', category_id: null }
+    newSubtask.value = { title: '', description: '', category_id: null }
     addingSubtask.value = false
   } catch (err) {
     console.error('Failed to create subtask', err)
@@ -457,8 +504,24 @@ async function removeSubtask(subtask) {
   try {
     await subtasksApi.delete(form.value.id, subtask.id)
     subtasks.value = subtasks.value.filter((s) => s.id !== subtask.id)
+    if (expandedSubtask.value === subtask.id) expandedSubtask.value = null
   } catch (err) {
     console.error('Failed to delete subtask', err)
+  }
+}
+
+function toggleExpandSubtask(subtask) {
+  expandedSubtask.value = expandedSubtask.value === subtask.id ? null : subtask.id
+}
+
+async function saveSubtaskDescription(subtask) {
+  try {
+    const { data } = await subtasksApi.update(form.value.id, subtask.id, { description: subtask.description || null })
+    const idx = subtasks.value.findIndex((s) => s.id === subtask.id)
+    if (idx !== -1) subtasks.value[idx] = data
+    expandedSubtask.value = null
+  } catch (err) {
+    console.error('Failed to update subtask description', err)
   }
 }
 
@@ -477,7 +540,6 @@ async function deleteCategory(cat) {
   try {
     await subtaskCategoriesApi.delete(cat.id)
     categories.value = categories.value.filter((c) => c.id !== cat.id)
-    // Refresh subtasks in case some had this category
     if (form.value.id) await fetchSubtasks(form.value.id)
   } catch (err) {
     console.error('Failed to delete category', err)

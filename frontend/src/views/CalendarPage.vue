@@ -16,10 +16,14 @@
     </div>
 
     <div class="flex flex-col lg:flex-row gap-4">
-      <!-- Calendar lists panel -->
+      <!-- Calendar lists panel — sticky -->
       <div class="lg:w-52 shrink-0">
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-3">
-          <CalendarListPanel :calendar-lists="calendarLists" @update="fetchCalendarLists" />
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-3 lg:sticky lg:top-[calc(3.5rem+1rem)]">
+          <CalendarListPanel
+            :calendar-lists="calendarListsForPanel"
+            @update="fetchCalendarLists"
+            @toggle-virtual="handleToggleVirtual"
+          />
         </div>
       </div>
 
@@ -51,10 +55,33 @@ import { ref, computed, onMounted } from 'vue'
 import CalendarView from '../components/CalendarView.vue'
 import EventDialog from '../components/EventDialog.vue'
 import CalendarListPanel from '../components/CalendarListPanel.vue'
-import { eventsApi, calendarListsApi } from '../api/index.js'
+import { eventsApi, calendarListsApi, todosApi } from '../api/index.js'
+
+const TODO_LIST_ID = 'todos-virtual'
+const TODO_LIST_COLOR = '#f59e0b'
 
 const events = ref([])
 const calendarLists = ref([])
+const todos = ref([])
+
+const todoListVisible = ref(
+  localStorage.getItem('todoListVisible') !== 'false'
+)
+
+// The virtual "TODO's" list entry for the panel
+const todoVirtualList = {
+  id: TODO_LIST_ID,
+  name: "TODO's",
+  color: TODO_LIST_COLOR,
+  ical_feed_id: null,
+  is_virtual: true,
+}
+
+// For the panel, include the virtual TODO's list
+const calendarListsForPanel = computed(() => [
+  ...calendarLists.value,
+  { ...todoVirtualList, is_visible: todoListVisible.value },
+])
 
 const listMap = computed(() => {
   const map = {}
@@ -66,6 +93,7 @@ const visibleListIds = computed(() => new Set(
   calendarLists.value.filter((l) => l.is_visible).map((l) => l.id)
 ))
 
+// Events from DB with subtask_category_names
 const calendarEvents = computed(() =>
   events.value.map((e) => {
     const list = e.calendar_list_id ? listMap.value[e.calendar_list_id] : null
@@ -78,17 +106,47 @@ const calendarEvents = computed(() =>
       allDay: e.all_day,
       backgroundColor: color,
       calendar_list_id: e.calendar_list_id,
-      extendedProps: { description: e.description, location: e.location, source: e.source, raw: e },
+      extendedProps: {
+        description: e.description,
+        location: e.location,
+        source: e.source,
+        raw: e,
+        subtask_category_names: e.subtask_category_names || [],
+      },
     }
   })
 )
 
-const visibleCalendarEvents = computed(() =>
-  calendarEvents.value.filter((e) => {
+// Virtual todo events (todos with due_date)
+const todoEvents = computed(() =>
+  todos.value
+    .filter((t) => t.due_date)
+    .map((t) => ({
+      id: `todo-${t.id}`,
+      title: `✓ ${t.title}`,
+      start: t.due_date,
+      end: t.due_date,
+      allDay: false,
+      backgroundColor: TODO_LIST_COLOR,
+      calendar_list_id: TODO_LIST_ID,
+      extendedProps: {
+        description: t.description,
+        location: null,
+        source: 'todo',
+        raw: t,
+        subtask_category_names: [],
+      },
+    }))
+)
+
+const visibleCalendarEvents = computed(() => {
+  const regularEvents = calendarEvents.value.filter((e) => {
     if (e.calendar_list_id === null || e.calendar_list_id === undefined) return true
     return visibleListIds.value.has(e.calendar_list_id)
   })
-)
+  const todoEventsFiltered = todoListVisible.value ? todoEvents.value : []
+  return [...regularEvents, ...todoEventsFiltered]
+})
 
 async function fetchCalendarLists() {
   try {
@@ -106,6 +164,13 @@ async function fetchEventsForRange({ start, end }) {
   } catch (err) {
     console.error('Failed to fetch events', err)
   }
+  // Also refresh todos
+  try {
+    const { data } = await todosApi.list()
+    todos.value = data
+  } catch (err) {
+    console.error('Failed to fetch todos', err)
+  }
 }
 
 const eventDialog = ref({ open: false, event: null })
@@ -118,6 +183,8 @@ function openAddEvent({ dateStr, allDay }) {
 }
 
 function openEditEvent({ event }) {
+  // Don't open edit for virtual TODO events
+  if (event.extendedProps?.source === 'todo') return
   const raw = event.extendedProps.raw
   eventDialog.value = { open: true, event: { ...raw } }
 }
@@ -148,5 +215,18 @@ async function deleteEvent(id) {
   eventDialog.value.open = false
 }
 
-onMounted(fetchCalendarLists)
+function handleToggleVirtual() {
+  todoListVisible.value = !todoListVisible.value
+  localStorage.setItem('todoListVisible', String(todoListVisible.value))
+}
+
+onMounted(async () => {
+  await fetchCalendarLists()
+  try {
+    const { data } = await todosApi.list()
+    todos.value = data
+  } catch (err) {
+    console.error('Failed to fetch todos', err)
+  }
+})
 </script>

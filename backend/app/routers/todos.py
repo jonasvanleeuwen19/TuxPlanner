@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -10,8 +10,11 @@ router = APIRouter(prefix="/todos", tags=["todos"])
 
 
 @router.get("/", response_model=List[schemas.TodoResponse])
-def list_todos(db: Session = Depends(get_db)):
-    return db.query(models.Todo).order_by(models.Todo.created_at.desc()).all()
+def list_todos(todo_list_id: Optional[int] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Todo)
+    if todo_list_id is not None:
+        query = query.filter(models.Todo.todo_list_id == todo_list_id)
+    return query.order_by(models.Todo.created_at.desc()).all()
 
 
 @router.get("/{todo_id}", response_model=schemas.TodoResponse)
