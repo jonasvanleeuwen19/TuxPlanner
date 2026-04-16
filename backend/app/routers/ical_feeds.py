@@ -51,7 +51,7 @@ def delete_feed(feed_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
     db.query(models.Event).filter(
         models.Event.source == "ical",
-        models.Event.ical_uid.like(f"%{db_feed.id}:%")
+        models.Event.ical_uid.like(f"{db_feed.id}:%"),
     ).delete(synchronize_session=False)
     db.delete(db_feed)
     db.commit()

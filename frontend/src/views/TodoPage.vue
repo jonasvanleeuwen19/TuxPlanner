@@ -81,7 +81,7 @@
                     prepend-icon="mdi-clock-outline"
                     rounded="lg"
                   >
-                    {{ formatDate(todo.due_date) }}
+                    {{ formatDateTime(todo.due_date) }}
                   </v-chip>
                 </div>
               </div>
@@ -162,7 +162,7 @@ async function deleteTodo(id) {
   }
 }
 
-function formatDate(dateStr) {
+function formatDateTime(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }

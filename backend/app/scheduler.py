@@ -25,11 +25,15 @@ def sync_feed_by_id(feed_id: int):
 def sync_all_ical_feeds():
     db = SessionLocal()
     try:
-        feeds = db.query(models.IcalFeed).filter(models.IcalFeed.is_active == True).all()
+        feeds = db.query(models.IcalFeed).filter(models.IcalFeed.is_active.is_(True)).all()
         for feed in feeds:
             _sync_feed(db, feed)
     finally:
         db.close()
+
+
+def _str_or_none(value):
+    return str(value) if value else None
 
 
 def _sync_feed(db: Session, feed: models.IcalFeed):
@@ -50,10 +54,8 @@ def _sync_feed(db: Session, feed: models.IcalFeed):
                 continue
 
             summary = str(component.get("SUMMARY", "Untitled"))
-            description_val = component.get("DESCRIPTION")
-            description = str(description_val) if description_val else None
-            location_val = component.get("LOCATION")
-            location = str(location_val) if location_val else None
+            description = _str_or_none(component.get("DESCRIPTION"))
+            location = _str_or_none(component.get("LOCATION"))
 
             dtstart = component.get("DTSTART")
             dtend = component.get("DTEND")

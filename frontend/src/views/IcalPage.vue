@@ -66,7 +66,7 @@
 
             <div class="text-caption text-medium-emphasis mb-3">
               <v-icon icon="mdi-clock-sync-outline" size="14" class="mr-1" />
-              {{ feed.last_synced ? `Last synced ${formatDate(feed.last_synced)}` : 'Never synced' }}
+              {{ feed.last_synced ? `Last synced ${formatDateTime(feed.last_synced)}` : 'Never synced' }}
             </div>
 
             <div class="d-flex gap-2">
@@ -254,7 +254,7 @@ async function deleteFeed() {
   feedToDelete.value = null
 }
 
-function formatDate(dateStr) {
+function formatDateTime(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-US', {
     day: 'numeric',
