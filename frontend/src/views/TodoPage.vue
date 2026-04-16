@@ -576,9 +576,16 @@ async function saveSession(sessionData) {
   if (!infoModal.value.todo) return
   try {
     if (editingSession.value) {
+      // Edit single session
       const { data } = await taskSessionsApi.update(infoModal.value.todo.id, editingSession.value.id, sessionData)
       const idx = sessions.value.findIndex((s) => s.id === data.id)
       if (idx !== -1) sessions.value[idx] = data
+    } else if (Array.isArray(sessionData)) {
+      // Multi-day: create one session per selected day
+      for (const s of sessionData) {
+        const { data } = await taskSessionsApi.create(infoModal.value.todo.id, s)
+        sessions.value.push(data)
+      }
     } else {
       const { data } = await taskSessionsApi.create(infoModal.value.todo.id, sessionData)
       sessions.value.push(data)

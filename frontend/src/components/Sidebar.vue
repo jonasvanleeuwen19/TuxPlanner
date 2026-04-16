@@ -24,7 +24,8 @@ import { RouterLink } from 'vue-router'
 import TodayPanel from './TodayPanel.vue'
 
 const navItems = [
-  { to: '/', icon: 'mdi-calendar-month', title: 'Calendar' },
+  { to: '/', icon: 'mdi-home-outline', title: 'Home' },
+  { to: '/calendar', icon: 'mdi-calendar-month', title: 'Calendar' },
   { to: '/todos', icon: 'mdi-checkbox-marked-circle-outline', title: 'Tasks' },
   { to: '/ical', icon: 'mdi-calendar-sync-outline', title: 'External Calendars' },
 ]
