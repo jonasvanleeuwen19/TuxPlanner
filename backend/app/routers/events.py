@@ -57,5 +57,7 @@ def delete_event(event_id: int, db: Session = Depends(get_db)):
     db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not db_event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    if db_event.source == "ical":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ICAL events cannot be deleted manually")
     db.delete(db_event)
     db.commit()

@@ -1,28 +1,26 @@
 <template>
-  <div class="today-panel px-4 py-3">
-    <div class="d-flex align-center mb-2">
-      <v-icon icon="mdi-calendar-today" color="primary" class="mr-2" />
-      <span class="text-subtitle-1 font-weight-medium">Vandaag</span>
+  <div class="today-panel">
+    <div class="d-flex align-center mb-3">
+      <v-icon icon="mdi-calendar-today" color="primary" class="mr-2" size="18" />
+      <span class="text-caption font-weight-semibold text-uppercase text-medium-emphasis letter-spacing-wide">Today</span>
     </div>
 
-    <!-- Date display -->
-    <div class="today-date text-center py-3">
+    <div class="today-date text-center py-3 mb-3">
       <div class="text-h2 font-weight-bold text-primary">{{ dayNumber }}</div>
-      <div class="text-subtitle-1 text-medium-emphasis">{{ fullDate }}</div>
+      <div class="text-body-2 text-medium-emphasis mt-1">{{ fullDate }}</div>
     </div>
 
-    <!-- Quick stats -->
-    <v-row dense class="mt-1">
+    <v-row dense>
       <v-col cols="6">
-        <v-card variant="tonal" color="primary" rounded="lg" class="pa-2 text-center">
+        <v-card variant="tonal" color="primary" rounded="xl" class="pa-2 text-center">
           <div class="text-h6 font-weight-bold">{{ weekNumber }}</div>
-          <div class="text-caption">Week</div>
+          <div class="text-caption text-medium-emphasis">Week</div>
         </v-card>
       </v-col>
       <v-col cols="6">
-        <v-card variant="tonal" color="secondary" rounded="lg" class="pa-2 text-center">
+        <v-card variant="tonal" color="secondary" rounded="xl" class="pa-2 text-center">
           <div class="text-h6 font-weight-bold">{{ dayOfYear }}</div>
-          <div class="text-caption">Dag v/h jaar</div>
+          <div class="text-caption text-medium-emphasis">Day of year</div>
         </v-card>
       </v-col>
     </v-row>
@@ -37,7 +35,7 @@ const now = computed(() => new Date())
 const dayNumber = computed(() => now.value.getDate())
 
 const fullDate = computed(() =>
-  now.value.toLocaleDateString('nl-NL', {
+  now.value.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     year: 'numeric',
@@ -65,7 +63,11 @@ const dayOfYear = computed(() => {
 }
 
 .today-date {
-  border-radius: 12px;
-  background: rgba(21, 101, 192, 0.05);
+  border-radius: 16px;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.letter-spacing-wide {
+  letter-spacing: 0.08em;
 }
 </style>
