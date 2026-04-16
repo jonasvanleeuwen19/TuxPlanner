@@ -1,44 +1,40 @@
 <template>
-  <v-container fluid class="pa-4 pa-md-6">
-    <div class="d-flex align-center mb-4">
+  <div class="p-4 md:p-6">
+    <div class="flex items-center mb-4">
       <div>
-        <div class="text-h5 font-weight-bold">Calendar</div>
-        <div class="text-body-2 text-medium-emphasis">Manage your schedule</div>
+        <h1 class="text-xl font-bold">Calendar</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Manage your schedule</p>
       </div>
-      <v-spacer />
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        rounded="lg"
-        elevation="0"
+      <div class="flex-1" />
+      <button
+        class="flex items-center gap-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
         @click="openAddEvent({ dateStr: new Date().toISOString(), allDay: false })"
       >
+        <i class="mdi mdi-plus" />
         New Event
-      </v-btn>
+      </button>
     </div>
 
-    <v-row>
+    <div class="flex flex-col lg:flex-row gap-4">
       <!-- Calendar lists panel -->
-      <v-col cols="12" md="3" lg="2">
-        <v-card rounded="xl" elevation="0" border class="pa-3">
+      <div class="lg:w-52 shrink-0">
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-3">
           <CalendarListPanel :calendar-lists="calendarLists" @update="fetchCalendarLists" />
-        </v-card>
-      </v-col>
+        </div>
+      </div>
 
       <!-- Calendar view -->
-      <v-col cols="12" md="9" lg="10">
-        <v-card rounded="xl" elevation="0" border>
-          <v-card-text class="pa-4">
-            <CalendarView
-              :events="visibleCalendarEvents"
-              @event-click="openEditEvent"
-              @date-click="openAddEvent"
-              @dates-set="fetchEventsForRange"
-            />
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+      <div class="flex-1 min-w-0">
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
+          <CalendarView
+            :events="visibleCalendarEvents"
+            @event-click="openEditEvent"
+            @date-click="openAddEvent"
+            @dates-set="fetchEventsForRange"
+          />
+        </div>
+      </div>
+    </div>
 
     <EventDialog
       v-model="eventDialog.open"
@@ -47,7 +43,7 @@
       @save="saveEvent"
       @delete="deleteEvent"
     />
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -60,14 +56,12 @@ import { eventsApi, calendarListsApi } from '../api/index.js'
 const events = ref([])
 const calendarLists = ref([])
 
-// Map of list id → list for quick lookup
 const listMap = computed(() => {
   const map = {}
   for (const l of calendarLists.value) map[l.id] = l
   return map
 })
 
-// IDs of lists that are currently visible
 const visibleListIds = computed(() => new Set(
   calendarLists.value.filter((l) => l.is_visible).map((l) => l.id)
 ))
@@ -89,7 +83,6 @@ const calendarEvents = computed(() =>
   })
 )
 
-// Filter out events from hidden lists
 const visibleCalendarEvents = computed(() =>
   calendarEvents.value.filter((e) => {
     if (e.calendar_list_id === null || e.calendar_list_id === undefined) return true
@@ -108,10 +101,7 @@ async function fetchCalendarLists() {
 
 async function fetchEventsForRange({ start, end }) {
   try {
-    const { data } = await eventsApi.list({
-      start: start.toISOString(),
-      end: end.toISOString(),
-    })
+    const { data } = await eventsApi.list({ start: start.toISOString(), end: end.toISOString() })
     events.value = data
   } catch (err) {
     console.error('Failed to fetch events', err)

@@ -1,144 +1,177 @@
 <template>
   <div>
-    <!-- Header row -->
-    <div class="d-flex align-center mb-2 px-1">
-      <span class="text-body-2 font-weight-semibold">My Calendars</span>
-      <v-spacer />
-      <v-btn
-        icon="mdi-plus"
-        size="x-small"
-        variant="text"
-        color="primary"
+    <div class="flex items-center mb-2 px-1">
+      <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">My Calendars</span>
+      <div class="flex-1" />
+      <button
+        class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-blue-500 transition-colors"
         @click="openAddDialog"
-      />
+      >
+        <i class="mdi mdi-plus text-sm" />
+      </button>
     </div>
 
-    <!-- List items -->
     <div
       v-for="list in calendarLists"
       :key="list.id"
-      class="cal-list-item d-flex align-center px-1 py-1 rounded-lg"
+      class="flex items-center px-1 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
-      <div
-        class="cal-list-color mr-2 flex-shrink-0"
-        :style="{ backgroundColor: list.color }"
-      />
-      <span class="text-body-2 flex-grow-1 text-truncate">{{ list.name }}</span>
-      <div class="d-flex align-center gap-1">
-        <v-btn
-          icon="mdi-pencil-outline"
-          size="x-small"
-          variant="text"
+      <div class="w-3 h-3 rounded mr-2 shrink-0" :style="{ backgroundColor: list.color }" />
+      <span class="text-xs flex-1 truncate">{{ list.name }}</span>
+      <div class="flex items-center gap-1">
+        <button
+          class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           @click="openEditDialog(list)"
-        />
-        <v-switch
-          :model-value="list.is_visible"
-          density="compact"
-          hide-details
-          color="primary"
-          class="flex-shrink-0"
-          style="max-width: 44px"
-          @update:model-value="toggleVisibility(list)"
-        />
+        >
+          <i class="mdi mdi-pencil-outline text-xs text-gray-500" />
+        </button>
+        <button
+          :class="[
+            'relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0',
+            list.is_visible ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+          ]"
+          @click="toggleVisibility(list)"
+        >
+          <span
+            :class="[
+              'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
+              list.is_visible ? 'translate-x-3.5' : 'translate-x-0.5'
+            ]"
+          />
+        </button>
       </div>
     </div>
 
-    <!-- Add Calendar List dialog -->
-    <v-dialog v-model="addDialog" max-width="400">
-      <v-card rounded="xl" elevation="8">
-        <v-card-title class="d-flex align-center pa-5 pb-3">
-          <span class="text-h6 font-weight-bold">New Calendar List</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="addDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pa-5">
-          <v-form ref="addFormRef">
-            <v-text-field
-              v-model="addForm.name"
-              label="Name"
-              variant="outlined"
-              density="comfortable"
-              :rules="[v => !!v || 'Name is required']"
-              class="mb-3"
-              autofocus
-            />
-            <div class="text-body-2 text-medium-emphasis mb-2">Color</div>
-            <div class="d-flex flex-wrap gap-2">
-              <div
-                v-for="color in colorOptions"
-                :key="color"
-                class="color-swatch"
-                :style="{ backgroundColor: color }"
-                :class="{ selected: addForm.color === color }"
-                @click="addForm.color = color"
+    <!-- Add Dialog -->
+    <Teleport to="body">
+      <div
+        v-if="addDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="addDialog = false"
+      >
+        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
+          <div class="flex items-center p-5 pb-3">
+            <span class="text-base font-bold">New Calendar List</span>
+            <div class="flex-1" />
+            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="addDialog = false">
+              <i class="mdi mdi-close" />
+            </button>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-800" />
+          <div class="p-5 space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+              <input
+                v-model="addForm.name"
+                type="text"
+                autofocus
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p v-if="addError" class="text-xs text-red-500 mt-1">{{ addError }}</p>
             </div>
-          </v-form>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" @click="addDialog = false">Cancel</v-btn>
-          <v-btn color="primary" variant="elevated" rounded="lg" :loading="saving" @click="saveAdd">
-            Create
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+            <div>
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Color</p>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="color in colorOptions"
+                  :key="color"
+                  class="w-6 h-6 rounded-full cursor-pointer transition-transform border-2 hover:scale-110 shrink-0"
+                  :style="{ backgroundColor: color, borderColor: addForm.color === color ? 'rgba(0,0,0,0.4)' : 'transparent' }"
+                  @click="addForm.color = color"
+                />
+              </div>
+            </div>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-800" />
+          <div class="flex justify-end gap-2 p-4">
+            <button
+              class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              @click="addDialog = false"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="saving"
+              class="flex items-center gap-1 px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              @click="saveAdd"
+            >
+              <i v-if="saving" class="mdi mdi-loading animate-spin" />
+              Create
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
-    <!-- Edit Calendar List dialog -->
-    <v-dialog v-model="editDialog" max-width="400">
-      <v-card rounded="xl" elevation="8">
-        <v-card-title class="d-flex align-center pa-5 pb-3">
-          <span class="text-h6 font-weight-bold">Edit Calendar List</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="editDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pa-5">
-          <v-form ref="editFormRef">
-            <v-text-field
-              v-model="editForm.name"
-              label="Name"
-              variant="outlined"
-              density="comfortable"
-              :rules="[v => !!v || 'Name is required']"
-              :disabled="!!editForm.ical_feed_id"
-              :hint="editForm.ical_feed_id ? 'Name is managed by ICAL feed' : ''"
-              persistent-hint
-              class="mb-3"
-            />
-            <div class="text-body-2 text-medium-emphasis mb-2">Color</div>
-            <div class="d-flex flex-wrap gap-2">
-              <div
-                v-for="color in colorOptions"
-                :key="color"
-                class="color-swatch"
-                :style="{ backgroundColor: color }"
-                :class="{ selected: editForm.color === color }"
-                @click="editForm.color = color"
+    <!-- Edit Dialog -->
+    <Teleport to="body">
+      <div
+        v-if="editDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="editDialog = false"
+      >
+        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm">
+          <div class="flex items-center p-5 pb-3">
+            <span class="text-base font-bold">Edit Calendar List</span>
+            <div class="flex-1" />
+            <button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="editDialog = false">
+              <i class="mdi mdi-close" />
+            </button>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-800" />
+          <div class="p-5 space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+              <input
+                v-model="editForm.name"
+                type="text"
+                :disabled="!!editForm.ical_feed_id"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
+              <p v-if="editForm.ical_feed_id" class="text-xs text-gray-500 mt-1">Name is managed by ICAL feed</p>
+              <p v-if="editError" class="text-xs text-red-500 mt-1">{{ editError }}</p>
             </div>
-          </v-form>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-4">
-          <v-btn
-            v-if="!editForm.ical_feed_id"
-            color="error"
-            variant="text"
-            prepend-icon="mdi-trash-can"
-            @click="deleteList"
-          />
-          <v-spacer />
-          <v-btn variant="text" @click="editDialog = false">Cancel</v-btn>
-          <v-btn color="primary" variant="elevated" rounded="lg" :loading="saving" @click="saveEdit">
-            Save
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+            <div>
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Color</p>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="color in colorOptions"
+                  :key="color"
+                  class="w-6 h-6 rounded-full cursor-pointer transition-transform border-2 hover:scale-110 shrink-0"
+                  :style="{ backgroundColor: color, borderColor: editForm.color === color ? 'rgba(0,0,0,0.4)' : 'transparent' }"
+                  @click="editForm.color = color"
+                />
+              </div>
+            </div>
+          </div>
+          <hr class="border-gray-200 dark:border-gray-800" />
+          <div class="flex items-center gap-2 p-4">
+            <button
+              v-if="!editForm.ical_feed_id"
+              class="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-500 transition-colors"
+              @click="deleteList"
+            >
+              <i class="mdi mdi-trash-can" />
+            </button>
+            <div class="flex-1" />
+            <button
+              class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              @click="editDialog = false"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="saving"
+              class="flex items-center gap-1 px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              @click="saveEdit"
+            >
+              <i v-if="saving" class="mdi mdi-loading animate-spin" />
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -161,19 +194,21 @@ const colorOptions = [
 const addDialog = ref(false)
 const editDialog = ref(false)
 const saving = ref(false)
-const addFormRef = ref(null)
-const editFormRef = ref(null)
+const addError = ref('')
+const editError = ref('')
 
 const addForm = ref({ name: '', color: '#3b82f6' })
 const editForm = ref({ id: null, name: '', color: '#3b82f6', ical_feed_id: null })
 
 function openAddDialog() {
   addForm.value = { name: '', color: '#3b82f6' }
+  addError.value = ''
   addDialog.value = true
 }
 
 function openEditDialog(list) {
   editForm.value = { id: list.id, name: list.name, color: list.color, ical_feed_id: list.ical_feed_id }
+  editError.value = ''
   editDialog.value = true
 }
 
@@ -187,8 +222,8 @@ async function toggleVisibility(list) {
 }
 
 async function saveAdd() {
-  const { valid } = await addFormRef.value.validate()
-  if (!valid) return
+  addError.value = ''
+  if (!addForm.value.name) { addError.value = 'Name is required'; return }
   saving.value = true
   try {
     await calendarListsApi.create(addForm.value)
@@ -202,8 +237,8 @@ async function saveAdd() {
 }
 
 async function saveEdit() {
-  const { valid } = await editFormRef.value.validate()
-  if (!valid) return
+  editError.value = ''
+  if (!editForm.value.ical_feed_id && !editForm.value.name) { editError.value = 'Name is required'; return }
   saving.value = true
   try {
     const updates = { color: editForm.value.color }
@@ -228,46 +263,3 @@ async function deleteList() {
   }
 }
 </script>
-
-<style scoped>
-.cal-list-item:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.cal-list-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-}
-
-.color-swatch {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.15s;
-  border: 2px solid transparent;
-  flex-shrink: 0;
-}
-
-.color-swatch:hover {
-  transform: scale(1.2);
-}
-
-.color-swatch.selected {
-  border-color: rgba(0, 0, 0, 0.4);
-  transform: scale(1.15);
-}
-
-.font-weight-semibold {
-  font-weight: 600;
-}
-
-.gap-1 {
-  gap: 4px;
-}
-
-.gap-2 {
-  gap: 8px;
-}
-</style>
