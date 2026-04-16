@@ -1,7 +1,38 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
+
+
+# ── Calendar List ────────────────────────────────────────────
+
+
+class CalendarListBase(BaseModel):
+    name: str
+    color: str = "#3b82f6"
+    is_visible: bool = True
+
+
+class CalendarListCreate(CalendarListBase):
+    pass
+
+
+class CalendarListUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+    is_visible: Optional[bool] = None
+
+
+class CalendarListResponse(CalendarListBase):
+    id: int
+    ical_feed_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Event ─────────────────────────────────────────────────────
 
 
 class EventBase(BaseModel):
@@ -12,6 +43,7 @@ class EventBase(BaseModel):
     end: Optional[datetime] = None
     all_day: bool = False
     color: Optional[str] = None
+    calendar_list_id: Optional[int] = None
 
 
 class EventCreate(EventBase):
@@ -26,6 +58,7 @@ class EventUpdate(BaseModel):
     end: Optional[datetime] = None
     all_day: Optional[bool] = None
     color: Optional[str] = None
+    calendar_list_id: Optional[int] = None
 
 
 class EventResponse(EventBase):
@@ -75,7 +108,7 @@ class IcalFeedBase(BaseModel):
 
 
 class IcalFeedCreate(IcalFeedBase):
-    pass
+    color: str = "#3b82f6"
 
 
 class IcalFeedUpdate(BaseModel):
@@ -87,6 +120,58 @@ class IcalFeedUpdate(BaseModel):
 class IcalFeedResponse(IcalFeedBase):
     id: int
     last_synced: Optional[datetime] = None
+    created_at: datetime
+    calendar_list_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ── Subtask Category ──────────────────────────────────────────
+
+
+class SubtaskCategoryBase(BaseModel):
+    name: str
+
+
+class SubtaskCategoryCreate(SubtaskCategoryBase):
+    pass
+
+
+class SubtaskCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class SubtaskCategoryResponse(SubtaskCategoryBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Subtask ───────────────────────────────────────────────────
+
+
+class SubtaskBase(BaseModel):
+    title: str
+    category_id: Optional[int] = None
+    completed: bool = False
+
+
+class SubtaskCreate(SubtaskBase):
+    pass
+
+
+class SubtaskUpdate(BaseModel):
+    title: Optional[str] = None
+    category_id: Optional[int] = None
+    completed: Optional[bool] = None
+
+
+class SubtaskResponse(SubtaskBase):
+    id: int
+    event_id: int
     created_at: datetime
 
     class Config:

@@ -1,7 +1,18 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
+
+
+class CalendarList(Base):
+    __tablename__ = "calendar_lists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    color = Column(String(50), nullable=False, default="#3b82f6")
+    is_visible = Column(Boolean, default=True)
+    ical_feed_id = Column(Integer, ForeignKey("ical_feeds.id", ondelete="CASCADE"), nullable=True, unique=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Event(Base):
@@ -17,6 +28,7 @@ class Event(Base):
     color = Column(String(50), nullable=True)
     source = Column(String(50), nullable=True)
     ical_uid = Column(String(500), nullable=True, index=True)
+    calendar_list_id = Column(Integer, ForeignKey("calendar_lists.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -42,4 +54,24 @@ class IcalFeed(Base):
     url = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True)
     last_synced = Column(DateTime(timezone=True), nullable=True)
+    calendar_list_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SubtaskCategory(Base):
+    __tablename__ = "subtask_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Subtask(Base):
+    __tablename__ = "subtasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
+    category_id = Column(Integer, ForeignKey("subtask_categories.id", ondelete="SET NULL"), nullable=True)
+    title = Column(String(255), nullable=False)
+    completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -24,8 +24,18 @@ def get_feed(feed_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.IcalFeedResponse, status_code=status.HTTP_201_CREATED)
 def create_feed(feed: schemas.IcalFeedCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    db_feed = models.IcalFeed(**feed.model_dump())
+    color = feed.color
+    feed_data = feed.model_dump(exclude={"color"})
+    db_feed = models.IcalFeed(**feed_data)
     db.add(db_feed)
+    db.flush()  # get db_feed.id without committing
+
+    # Auto-create a linked CalendarList for this feed
+    db_list = models.CalendarList(name=db_feed.name, color=color, ical_feed_id=db_feed.id)
+    db.add(db_list)
+    db.flush()
+    db_feed.calendar_list_id = db_list.id
+
     db.commit()
     db.refresh(db_feed)
     background_tasks.add_task(sync_single_feed, db_feed.id)
@@ -39,6 +49,13 @@ def update_feed(feed_id: int, feed: schemas.IcalFeedUpdate, db: Session = Depend
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
     for field, value in feed.model_dump(exclude_unset=True).items():
         setattr(db_feed, field, value)
+    # Keep linked CalendarList name in sync if name changed
+    if "name" in feed.model_dump(exclude_unset=True) and db_feed.calendar_list_id:
+        db_list = db.query(models.CalendarList).filter(
+            models.CalendarList.id == db_feed.calendar_list_id
+        ).first()
+        if db_list:
+            db_list.name = db_feed.name
     db.commit()
     db.refresh(db_feed)
     return db_feed
@@ -49,11 +66,16 @@ def delete_feed(feed_id: int, db: Session = Depends(get_db)):
     db_feed = db.query(models.IcalFeed).filter(models.IcalFeed.id == feed_id).first()
     if not db_feed:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
+    calendar_list_id = db_feed.calendar_list_id
     db.query(models.Event).filter(
         models.Event.source == "ical",
         models.Event.ical_uid.like(f"{db_feed.id}:%"),
     ).delete(synchronize_session=False)
     db.delete(db_feed)
+    db.flush()
+    # Delete the linked CalendarList after the feed is gone (to avoid FK violation)
+    if calendar_list_id:
+        db.query(models.CalendarList).filter(models.CalendarList.id == calendar_list_id).delete()
     db.commit()
 
 

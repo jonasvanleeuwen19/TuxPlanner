@@ -46,8 +46,11 @@
         <v-card rounded="xl" elevation="0" border>
           <v-card-text class="pa-4">
             <div class="d-flex align-start justify-space-between mb-3">
-              <div class="feed-icon mr-3">
-                <v-icon icon="mdi-calendar-sync-outline" color="primary" size="22" />
+              <div
+                class="feed-icon mr-3 flex-shrink-0"
+                :style="{ background: `${getListColor(feed)}22` }"
+              >
+                <v-icon icon="mdi-calendar-sync-outline" :color="getListColor(feed)" size="22" />
               </div>
               <div class="flex-grow-1 min-width-0">
                 <div class="text-body-1 font-weight-semibold">{{ feed.name }}</div>
@@ -67,6 +70,19 @@
             <div class="text-caption text-medium-emphasis mb-3">
               <v-icon icon="mdi-clock-sync-outline" size="14" class="mr-1" />
               {{ feed.last_synced ? `Last synced ${formatDateTime(feed.last_synced)}` : 'Never synced' }}
+            </div>
+
+            <!-- Color picker for the linked calendar list -->
+            <div class="d-flex align-center mb-3 flex-wrap gap-1">
+              <span class="text-caption text-medium-emphasis mr-1">Color:</span>
+              <div
+                v-for="color in colorOptions"
+                :key="color"
+                class="color-swatch"
+                :style="{ backgroundColor: color }"
+                :class="{ selected: getListColor(feed) === color }"
+                @click="updateFeedColor(feed, color)"
+              />
             </div>
 
             <div class="d-flex gap-2">
@@ -139,7 +155,19 @@
               :rules="[v => !!v || 'URL is required', v => /^(https?|webcals?):\/\//.test(v) || 'Must be a valid URL']"
               hint="Paste your calendar's .ics subscribe link"
               persistent-hint
+              class="mb-3"
             />
+            <div class="text-body-2 text-medium-emphasis mb-2">Calendar color</div>
+            <div class="d-flex flex-wrap gap-2">
+              <div
+                v-for="color in colorOptions"
+                :key="color"
+                class="color-swatch"
+                :style="{ backgroundColor: color }"
+                :class="{ selected: newFeed.color === color }"
+                @click="newFeed.color = color"
+              />
+            </div>
           </v-form>
         </v-card-text>
 
@@ -173,9 +201,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { icalApi } from '../api/index.js'
+import { icalApi, calendarListsApi } from '../api/index.js'
 
 const feeds = ref([])
+const calendarLists = ref([])
 const loading = ref(false)
 const addDialog = ref(false)
 const deleteDialog = ref(false)
@@ -184,15 +213,28 @@ const addFormRef = ref(null)
 const adding = ref(false)
 const syncingId = ref(null)
 
-const newFeed = ref({ name: '', url: '' })
+const colorOptions = [
+  '#3b82f6', '#8b5cf6', '#06b6d4', '#10b981',
+  '#f59e0b', '#ef4444', '#ec4899', '#0ea5e9',
+  '#84cc16', '#f97316', '#64748b', '#a855f7',
+]
 
-async function fetchFeeds() {
+const newFeed = ref({ name: '', url: '', color: '#3b82f6' })
+
+function getListColor(feed) {
+  if (!feed.calendar_list_id) return '#3b82f6'
+  const list = calendarLists.value.find((l) => l.id === feed.calendar_list_id)
+  return list ? list.color : '#3b82f6'
+}
+
+async function fetchData() {
   loading.value = true
   try {
-    const { data } = await icalApi.list()
-    feeds.value = data
+    const [feedsRes, listsRes] = await Promise.all([icalApi.list(), calendarListsApi.list()])
+    feeds.value = feedsRes.data
+    calendarLists.value = listsRes.data
   } catch (err) {
-    console.error('Failed to fetch feeds', err)
+    console.error('Failed to fetch data', err)
   } finally {
     loading.value = false
   }
@@ -206,11 +248,25 @@ async function addFeed() {
     const { data } = await icalApi.create(newFeed.value)
     feeds.value.unshift(data)
     addDialog.value = false
-    newFeed.value = { name: '', url: '' }
+    newFeed.value = { name: '', url: '', color: '#3b82f6' }
+    // Refresh lists to pick up the auto-created calendar list
+    const { data: lists } = await calendarListsApi.list()
+    calendarLists.value = lists
   } catch (err) {
     console.error('Failed to add feed', err)
   } finally {
     adding.value = false
+  }
+}
+
+async function updateFeedColor(feed, color) {
+  if (!feed.calendar_list_id) return
+  try {
+    await calendarListsApi.update(feed.calendar_list_id, { color })
+    const idx = calendarLists.value.findIndex((l) => l.id === feed.calendar_list_id)
+    if (idx !== -1) calendarLists.value[idx] = { ...calendarLists.value[idx], color }
+  } catch (err) {
+    console.error('Failed to update feed color', err)
   }
 }
 
@@ -220,7 +276,7 @@ async function syncFeed(feed) {
     const { data } = await icalApi.sync(feed.id)
     const idx = feeds.value.findIndex((f) => f.id === data.id)
     if (idx !== -1) feeds.value[idx] = data
-    await fetchFeeds()
+    await fetchData()
   } catch (err) {
     console.error('Failed to sync feed', err)
   } finally {
@@ -247,6 +303,9 @@ async function deleteFeed() {
   try {
     await icalApi.delete(feedToDelete.value.id)
     feeds.value = feeds.value.filter((f) => f.id !== feedToDelete.value.id)
+    // Refresh lists since the linked list was deleted
+    const { data: lists } = await calendarListsApi.list()
+    calendarLists.value = lists
   } catch (err) {
     console.error('Failed to delete feed', err)
   }
@@ -264,7 +323,7 @@ function formatDateTime(dateStr) {
   })
 }
 
-onMounted(fetchFeeds)
+onMounted(fetchData)
 </script>
 
 <style scoped>
@@ -285,5 +344,32 @@ onMounted(fetchFeeds)
 
 .font-weight-semibold {
   font-weight: 600;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+}
+
+.color-swatch:hover {
+  transform: scale(1.2);
+}
+
+.color-swatch.selected {
+  border-color: rgba(0, 0, 0, 0.4);
+  transform: scale(1.15);
+}
+
+.gap-1 {
+  gap: 4px;
+}
+
+.gap-2 {
+  gap: 8px;
 }
 </style>

@@ -17,20 +17,33 @@
       </v-btn>
     </div>
 
-    <v-card rounded="xl" elevation="0" border>
-      <v-card-text class="pa-4">
-        <CalendarView
-          :events="calendarEvents"
-          @event-click="openEditEvent"
-          @date-click="openAddEvent"
-          @dates-set="fetchEventsForRange"
-        />
-      </v-card-text>
-    </v-card>
+    <v-row>
+      <!-- Calendar lists panel -->
+      <v-col cols="12" md="3" lg="2">
+        <v-card rounded="xl" elevation="0" border class="pa-3">
+          <CalendarListPanel :calendar-lists="calendarLists" @update="fetchCalendarLists" />
+        </v-card>
+      </v-col>
+
+      <!-- Calendar view -->
+      <v-col cols="12" md="9" lg="10">
+        <v-card rounded="xl" elevation="0" border>
+          <v-card-text class="pa-4">
+            <CalendarView
+              :events="visibleCalendarEvents"
+              @event-click="openEditEvent"
+              @date-click="openAddEvent"
+              @dates-set="fetchEventsForRange"
+            />
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <EventDialog
       v-model="eventDialog.open"
       :event="eventDialog.event"
+      :calendar-lists="calendarLists"
       @save="saveEvent"
       @delete="deleteEvent"
     />
@@ -38,24 +51,60 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import CalendarView from '../components/CalendarView.vue'
 import EventDialog from '../components/EventDialog.vue'
-import { eventsApi } from '../api/index.js'
+import CalendarListPanel from '../components/CalendarListPanel.vue'
+import { eventsApi, calendarListsApi } from '../api/index.js'
 
 const events = ref([])
+const calendarLists = ref([])
+
+// Map of list id → list for quick lookup
+const listMap = computed(() => {
+  const map = {}
+  for (const l of calendarLists.value) map[l.id] = l
+  return map
+})
+
+// IDs of lists that are currently visible
+const visibleListIds = computed(() => new Set(
+  calendarLists.value.filter((l) => l.is_visible).map((l) => l.id)
+))
 
 const calendarEvents = computed(() =>
-  events.value.map((e) => ({
-    id: String(e.id),
-    title: e.title,
-    start: e.start,
-    end: e.end,
-    allDay: e.all_day,
-    backgroundColor: e.color || '#3b82f6',
-    extendedProps: { description: e.description, location: e.location, source: e.source, raw: e },
-  }))
+  events.value.map((e) => {
+    const list = e.calendar_list_id ? listMap.value[e.calendar_list_id] : null
+    const color = list ? list.color : (e.color || '#3b82f6')
+    return {
+      id: String(e.id),
+      title: e.title,
+      start: e.start,
+      end: e.end,
+      allDay: e.all_day,
+      backgroundColor: color,
+      calendar_list_id: e.calendar_list_id,
+      extendedProps: { description: e.description, location: e.location, source: e.source, raw: e },
+    }
+  })
 )
+
+// Filter out events from hidden lists
+const visibleCalendarEvents = computed(() =>
+  calendarEvents.value.filter((e) => {
+    if (e.calendar_list_id == null) return true
+    return visibleListIds.value.has(e.calendar_list_id)
+  })
+)
+
+async function fetchCalendarLists() {
+  try {
+    const { data } = await calendarListsApi.list()
+    calendarLists.value = data
+  } catch (err) {
+    console.error('Failed to fetch calendar lists', err)
+  }
+}
 
 async function fetchEventsForRange({ start, end }) {
   try {
@@ -74,7 +123,7 @@ const eventDialog = ref({ open: false, event: null })
 function openAddEvent({ dateStr, allDay }) {
   eventDialog.value = {
     open: true,
-    event: { title: '', start: dateStr, end: null, all_day: allDay, color: null, description: '', location: '' },
+    event: { title: '', start: dateStr, end: null, all_day: allDay, color: null, description: '', location: '', calendar_list_id: null },
   }
 }
 
@@ -108,4 +157,6 @@ async function deleteEvent(id) {
   }
   eventDialog.value.open = false
 }
+
+onMounted(fetchCalendarLists)
 </script>
