@@ -20,10 +20,6 @@ class Settings(BaseSettings):
     # and persisted to .secret_key so it survives restarts.
     secret_key: str = _PLACEHOLDER
     access_token_expire_hours: int = 8
-    auth_username: str = "admin"
-    # Generate hash with:
-    #   python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt(12)).decode())"
-    auth_password_hash: str = ""
     # Set to True in production when running behind HTTPS
     cookie_secure: bool = False
 

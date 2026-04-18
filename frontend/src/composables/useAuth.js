@@ -5,8 +5,24 @@ import api from '../api/index.js'
 const isAuthenticated = ref(false)
 const currentUser = ref(null)
 const authChecked = ref(false)
+const setupRequired = ref(false)
+const setupChecked = ref(false)
 
 export function useAuth() {
+  /**
+   * Check whether first-run setup is still needed.
+   */
+  async function checkSetup() {
+    try {
+      const { data } = await api.get('/auth/setup-status')
+      setupRequired.value = data.setup_required
+    } catch {
+      setupRequired.value = false
+    } finally {
+      setupChecked.value = true
+    }
+  }
+
   /**
    * Verify the current session by calling /auth/me.
    * Sets isAuthenticated and currentUser accordingly.
@@ -22,6 +38,17 @@ export function useAuth() {
     } finally {
       authChecked.value = true
     }
+  }
+
+  /**
+   * Create the first admin account (first-run setup).
+   * On success the backend sets an httpOnly cookie automatically.
+   */
+  async function setup(username, password) {
+    await api.post('/auth/setup', { username, password })
+    setupRequired.value = false
+    setupChecked.value = true
+    await checkAuth()
   }
 
   /**
@@ -52,5 +79,16 @@ export function useAuth() {
     currentUser.value = null
   }
 
-  return { isAuthenticated, currentUser, authChecked, checkAuth, login, logout }
+  return {
+    isAuthenticated,
+    currentUser,
+    authChecked,
+    setupRequired,
+    setupChecked,
+    checkAuth,
+    checkSetup,
+    setup,
+    login,
+    logout,
+  }
 }
