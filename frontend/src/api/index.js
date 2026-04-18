@@ -3,7 +3,22 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
+
+// Redirect to login on any 401 that isn't from an auth endpoint itself
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes('/auth/')
+    ) {
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
 
 export const eventsApi = {
   list: (params = {}) => api.get('/events/', { params }),

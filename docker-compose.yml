@@ -21,6 +21,11 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://tuxplanner:tuxplanner@db:5432/tuxplanner
+      SECRET_KEY: ${SECRET_KEY:-CHANGE_ME_BEFORE_DEPLOY_use_openssl_rand_hex_32}
+      AUTH_USERNAME: ${AUTH_USERNAME:-admin}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}
+      ACCESS_TOKEN_EXPIRE_HOURS: ${ACCESS_TOKEN_EXPIRE_HOURS:-8}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "8000:8000"
     depends_on:

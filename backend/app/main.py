@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.auth import get_current_user
 from app.database import Base, engine
 from app.routers import events, todos
-from app.routers import ical_feeds, calendar_lists, subtask_categories, subtasks, todo_lists, task_sessions
+from app.routers import auth, ical_feeds, calendar_lists, subtask_categories, subtasks, todo_lists, task_sessions
 from app.scheduler import start_scheduler, stop_scheduler
 
 Base.metadata.create_all(bind=engine)
@@ -88,14 +89,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(events.router, prefix="/api")
-app.include_router(todos.router, prefix="/api")
-app.include_router(ical_feeds.router, prefix="/api")
-app.include_router(calendar_lists.router, prefix="/api")
-app.include_router(subtask_categories.router, prefix="/api")
-app.include_router(subtasks.router, prefix="/api")
-app.include_router(todo_lists.router, prefix="/api")
-app.include_router(task_sessions.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+
+_protected = {"dependencies": [Depends(get_current_user)]}
+app.include_router(events.router, prefix="/api", **_protected)
+app.include_router(todos.router, prefix="/api", **_protected)
+app.include_router(ical_feeds.router, prefix="/api", **_protected)
+app.include_router(calendar_lists.router, prefix="/api", **_protected)
+app.include_router(subtask_categories.router, prefix="/api", **_protected)
+app.include_router(subtasks.router, prefix="/api", **_protected)
+app.include_router(todo_lists.router, prefix="/api", **_protected)
+app.include_router(task_sessions.router, prefix="/api", **_protected)
 
 
 @app.get("/")
