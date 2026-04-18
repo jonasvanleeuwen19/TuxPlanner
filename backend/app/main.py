@@ -58,6 +58,14 @@ def run_migrations():
         """CREATE UNIQUE INDEX IF NOT EXISTS uq_calendar_lists_ical_feed_caldav_name
                ON calendar_lists (ical_feed_id, caldav_calendar_name)
                WHERE caldav_calendar_name IS NOT NULL""",
+        # Users table for first-run account setup
+        """CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )""",
     ]
     with engine.begin() as conn:
         for stmt in migrations:

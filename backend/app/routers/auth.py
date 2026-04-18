@@ -1,15 +1,24 @@
 import secrets
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from app.auth import create_access_token, get_current_user, verify_password
+from app.auth import create_access_token, get_current_user
 from app.config import settings
+from app.database import get_db
+from app.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _COOKIE_NAME = "access_token"
+_BCRYPT_ROUNDS = 12
+
+# A valid bcrypt hash used as a stand-in when the username is not found,
+# so that the bcrypt computation always runs and prevents timing-based enumeration.
+_DUMMY_HASH = bcrypt.hashpw(b"__dummy__", bcrypt.gensalt(_BCRYPT_ROUNDS)).decode()
 
 
 def _cookie_max_age() -> int:
@@ -18,25 +27,80 @@ def _cookie_max_age() -> int:
 
 class UserInfo(BaseModel):
     username: str
+    is_admin: bool
+
+
+class SetupRequest(BaseModel):
+    username: str
+    password: str
+
+
+@router.get("/setup-status")
+def setup_status(db: Session = Depends(get_db)):
+    """Return whether the first-run setup has been completed (any user exists)."""
+    has_users = db.query(User).first() is not None
+    return {"setup_required": not has_users}
+
+
+@router.post("/setup", status_code=status.HTTP_201_CREATED)
+def setup(body: SetupRequest, response: Response, db: Session = Depends(get_db)):
+    """Create the first admin account. Only available before any user exists."""
+    if db.query(User).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Setup has already been completed.",
+        )
+
+    if len(body.username.strip()) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Username must not be empty.",
+        )
+    if len(body.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 8 characters.",
+        )
+
+    password_hash = bcrypt.hashpw(body.password.encode("utf-8"), bcrypt.gensalt(_BCRYPT_ROUNDS)).decode()
+    user = User(username=body.username.strip(), password_hash=password_hash, is_admin=True)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(user.username)
+    response.set_cookie(
+        key=_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="strict",
+        secure=settings.cookie_secure,
+        max_age=_cookie_max_age(),
+        path="/",
+    )
+    return {"message": "Account created and logged in successfully"}
 
 
 @router.post("/login")
-def login(response: Response, form: OAuth2PasswordRequestForm = Depends()):
+def login(response: Response, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Authenticate with username + password; sets a secure httpOnly cookie."""
-    if not settings.auth_password_hash:
+    if db.query(User).first() is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Authentication not configured. Set AUTH_PASSWORD_HASH in your .env file. "
-                "Generate with: "
-                "python -c \"import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt(12)).decode())\""
-            ),
+            detail="Setup not completed. Please create an account first.",
         )
 
-    # Always run both checks to prevent timing-based username enumeration.
-    password_ok = verify_password(form.password, settings.auth_password_hash)
-    username_ok = secrets.compare_digest(
-        form.username.lower(), settings.auth_username.lower()
+    user = db.query(User).filter(User.username == form.username).first()
+
+    # Always run bcrypt to prevent timing-based username enumeration.
+    stored_hash = user.password_hash if user else _DUMMY_HASH
+    try:
+        password_ok = bcrypt.checkpw(form.password.encode("utf-8"), stored_hash.encode("utf-8"))
+    except Exception:
+        password_ok = False
+
+    username_ok = user is not None and secrets.compare_digest(
+        form.username.lower(), user.username.lower()
     )
 
     if not (username_ok and password_ok):
@@ -45,7 +109,7 @@ def login(response: Response, form: OAuth2PasswordRequestForm = Depends()):
             detail="Incorrect username or password",
         )
 
-    token = create_access_token(form.username)
+    token = create_access_token(user.username)
     response.set_cookie(
         key=_COOKIE_NAME,
         value=token,
@@ -66,6 +130,9 @@ def logout(response: Response):
 
 
 @router.get("/me", response_model=UserInfo)
-def get_me(username: str = Depends(get_current_user)):
+def get_me(username: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """Return info about the currently authenticated user."""
-    return UserInfo(username=username)
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return UserInfo(username=user.username, is_admin=user.is_admin)
