@@ -14,6 +14,11 @@ from app.models import User
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _COOKIE_NAME = "access_token"
+_BCRYPT_ROUNDS = 12
+
+# A valid bcrypt hash used as a stand-in when the username is not found,
+# so that the bcrypt computation always runs and prevents timing-based enumeration.
+_DUMMY_HASH = bcrypt.hashpw(b"__dummy__", bcrypt.gensalt(_BCRYPT_ROUNDS)).decode()
 
 
 def _cookie_max_age() -> int:
@@ -57,7 +62,7 @@ def setup(body: SetupRequest, response: Response, db: Session = Depends(get_db))
             detail="Password must be at least 8 characters.",
         )
 
-    password_hash = bcrypt.hashpw(body.password.encode("utf-8"), bcrypt.gensalt(12)).decode()
+    password_hash = bcrypt.hashpw(body.password.encode("utf-8"), bcrypt.gensalt(_BCRYPT_ROUNDS)).decode()
     user = User(username=body.username.strip(), password_hash=password_hash, is_admin=True)
     db.add(user)
     db.commit()
@@ -88,8 +93,7 @@ def login(response: Response, form: OAuth2PasswordRequestForm = Depends(), db: S
     user = db.query(User).filter(User.username == form.username).first()
 
     # Always run bcrypt to prevent timing-based username enumeration.
-    dummy_hash = "$2b$12$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    stored_hash = user.password_hash if user else dummy_hash
+    stored_hash = user.password_hash if user else _DUMMY_HASH
     try:
         password_ok = bcrypt.checkpw(form.password.encode("utf-8"), stored_hash.encode("utf-8"))
     except Exception:
