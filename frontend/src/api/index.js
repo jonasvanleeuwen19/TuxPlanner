@@ -3,7 +3,33 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
+
+// Router reference set by main.js after the router is created,
+// avoiding a circular import between api → router → composables → api.
+let _router = null
+export function configureApiRouter(router) {
+  _router = router
+}
+
+// Redirect to login on any 401 that isn't from an auth endpoint itself
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes('/auth/')
+    ) {
+      if (_router) {
+        _router.push('/login')
+      } else {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export const eventsApi = {
   list: (params = {}) => api.get('/events/', { params }),

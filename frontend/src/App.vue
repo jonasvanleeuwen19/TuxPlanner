@@ -1,5 +1,11 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+  <!-- Public routes (e.g. login) render without the app shell -->
+  <div v-if="route.meta.public" class="contents">
+    <RouterView />
+  </div>
+
+  <!-- Authenticated app shell -->
+  <div v-else class="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
     <!-- Top bar -->
     <header class="fixed top-0 left-0 right-0 z-30 h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-3 gap-3">
       <button
@@ -12,6 +18,13 @@
         <span class="text-lg font-bold tracking-tight text-blue-500 dark:text-blue-400">TuxPlanner</span>
       </RouterLink>
       <div class="flex-1" />
+      <button
+        class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        :title="`Signed in as ${currentUser?.username ?? ''}`"
+        @click="handleLogout"
+      >
+        <i class="mdi mdi-logout text-xl" />
+      </button>
       <button
         class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         @click="toggleTheme"
@@ -47,8 +60,13 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
+import { useAuth } from './composables/useAuth.js'
+
+const route = useRoute()
+const router = useRouter()
+const { currentUser, logout } = useAuth()
 
 const theme = ref(localStorage.getItem('theme') || 'light')
 
@@ -61,6 +79,11 @@ watch(theme, applyTheme, { immediate: true })
 function toggleTheme() {
   theme.value = theme.value === 'light' ? 'dark' : 'light'
   localStorage.setItem('theme', theme.value)
+}
+
+async function handleLogout() {
+  await logout()
+  router.push('/login')
 }
 
 const drawer = ref(true)
