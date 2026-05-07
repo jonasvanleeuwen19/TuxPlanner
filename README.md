@@ -17,7 +17,7 @@ The ULTIMATE self-hosted planner app, a personal calendar with todos and a daily
 -  **FullCalendar** — month / week / day views, drag-and-drop events
 -  **Sidebar** — Today panel (date, week number, day-of-year) + Todo list
 -  **Todos** — create, complete, delete with optional due date
--  **Planning** Connect todo's as tasks to your calendar event and plan when you want to work on your task
+-  **Planning** Connect todo's as tasks to your calendar events and plan when you want to work on your tasks
 -  **Events** — create, edit, delete, colour-code appointments
 -  **Dark mode** toggle
 
