@@ -1,8 +1,8 @@
 # TuxPlanner
 
-The ULTIMATE self-hosted planner app — a personal calendar with todos and a daily overview.
+The ULTIMATE self-hosted planner app, a personal calendar with todos and a daily overview.
 
-![TuxPlanner UI](https://github.com/user-attachments/assets/8f542f8d-786e-4398-8ea7-9f94331801d8)
+<img width="1920" height="932" alt="image" src="https://github.com/user-attachments/assets/3feebc4e-0ca4-42f9-9ab1-a4c28c765606" />
 
 ## Stack
 
@@ -14,12 +14,12 @@ The ULTIMATE self-hosted planner app — a personal calendar with todos and a da
 
 ## Features
 
-- 📅 **FullCalendar** — month / week / day views, drag-and-drop events
-- 📋 **Sidebar** — Today panel (date, week number, day-of-year) + Todo list
-- ✅ **Todos** — create, complete, delete with optional due date
-- 🗓️ **Events** — create, edit, delete, colour-code appointments
-- 🌙 **Dark mode** toggle
-- 🌍 Dutch locale
+-  **FullCalendar** — month / week / day views, drag-and-drop events
+-  **Sidebar** — Today panel (date, week number, day-of-year) + Todo list
+-  **Todos** — create, complete, delete with optional due date
+-  **Planning** Connect todo's as tasks to your calendar event and plan when you want to work on your task
+-  **Events** — create, edit, delete, colour-code appointments
+-  **Dark mode** toggle
 
 ## Quick Start (Docker Compose)
 
@@ -69,39 +69,3 @@ npm run dev
 ```
 
 App will be available at `http://localhost:5173`.
-
-## Project Structure
-
-```
-TuxPlanner/
-├── backend/
-│   ├── app/
-│   │   ├── main.py          # FastAPI app + CORS + router registration
-│   │   ├── config.py        # Settings (DATABASE_URL)
-│   │   ├── database.py      # SQLAlchemy engine + session
-│   │   ├── models.py        # ORM models: Event, Todo
-│   │   ├── schemas.py       # Pydantic request/response schemas
-│   │   └── routers/
-│   │       ├── events.py    # CRUD /api/events/
-│   │       └── todos.py     # CRUD /api/todos/
-│   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── App.vue           # Root layout
-│   │   ├── main.js
-│   │   ├── plugins/
-│   │   │   └── vuetify.js    # Vuetify + theme config
-│   │   ├── api/
-│   │   │   └── index.js      # Axios wrappers for events & todos
-│   │   └── components/
-│   │       ├── CalendarView.vue  # FullCalendar wrapper
-│   │       ├── Sidebar.vue       # Navigation drawer
-│   │       ├── TodayPanel.vue    # Today date + stats
-│   │       ├── EventDialog.vue   # Add/edit event modal
-│   │       └── TodoDialog.vue    # Add todo modal
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-└── docker-compose.yml
-```
